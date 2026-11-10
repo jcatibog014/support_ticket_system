@@ -963,3 +963,4 @@ input[type="file"]::file-selector-button {
 .setting .view-as-row select { min-height: var(--control-height); }
 .offline-page { margin: 3rem auto; }
 .setting .view-as-row .button { height: var(--control-height); }
+.logo-mark { flex: none; display: block; }

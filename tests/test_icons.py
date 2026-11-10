@@ -51,3 +51,11 @@ def test_the_app_can_be_installed(client):
     for path in ("/static/offline.html", "/static/theme.js", "/static/style.css"):
         assert client.get(path).status_code == 200
     assert "worker-src 'self'" in client.get("/login").headers["Content-Security-Policy"]
+
+
+def test_the_logo_is_the_owners_drawing(client):
+    logo = (ICONS / "logo.svg").read_text(encoding="utf-8")
+    assert logo.startswith("<svg") and 'id="bg"' in logo
+    page = client.get("/login").get_data(as_text=True)
+    assert "icons/logo.svg" in page
+    assert client.get("/static/icons/logo.svg").mimetype == "image/svg+xml"
