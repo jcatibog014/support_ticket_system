@@ -502,12 +502,13 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 
 /* ---------- Settings ---------- */
 
-.settings { display: grid; gap: 1rem; max-width: 60rem; }
+.settings { display: grid; gap: 1rem; }  /* as wide as the page, like the other pages */
 .setting {
   display: grid; gap: 1rem; background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.25rem;
 }
 @media (min-width: 48rem) { .setting { grid-template-columns: 16rem minmax(0, 1fr); gap: 2rem; } }
+@media (min-width: 72rem) { .setting { grid-template-columns: 22rem minmax(0, 1fr); gap: 3rem; } }
 .setting-text h2 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
 .setting-text p { color: var(--muted); font-size: 0.875rem; }
 .theme-choice { display: flex; gap: 0.5rem; border: 0; padding: 0; margin: 0; flex-wrap: wrap; align-self: center; }
@@ -519,7 +520,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 }
 .theme-choice input:checked + span { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); }
 .theme-choice input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
-.setting-links { display: grid; gap: 0.5rem; align-self: center; }
+.setting-links { display: grid; gap: 0.5rem; align-self: center; justify-items: start; }
 
 .code-box {
   font-family: var(--font-code); font-size: 1.5rem; font-weight: 600; letter-spacing: 0.08em; text-align: center;
@@ -997,3 +998,7 @@ input[type="checkbox"].switch:disabled { opacity: 0.55; cursor: not-allowed; }
 .setting-fold[open] summary { margin-bottom: 1rem; }
 .setting-fold { display: grid; justify-items: start; }
 .setting-fold > form { width: 100%; }
+
+/* The cards fill the page, but text boxes keep a width that's easy to read and fill in. */
+.setting .inline-save, .setting-fold > form, .setting .switch-line + .hint { max-width: 40rem; }
+.setting > .form-actions { justify-content: flex-start; }  /* Log out lines up with the other controls */
