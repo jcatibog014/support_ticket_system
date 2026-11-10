@@ -23,7 +23,7 @@ PAGE_SIZE = 50
 
 # The staff queue's tabs: (key, title, a WHERE for it).
 QUEUE_TABS = ("unassigned", "mine", "overdue", "open", "waiting", "resolved", "closed")
-TAB_TITLES = {"unassigned": "Unassigned", "mine": "Mine", "overdue": "Overdue", "open": "All Open",
+TAB_TITLES = {"unassigned": "Unassigned", "mine": "Assigned to Me", "overdue": "Overdue", "open": "All Open",
               "waiting": "Waiting", "resolved": "Resolved", "closed": "Closed"}
 
 

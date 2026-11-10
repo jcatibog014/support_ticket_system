@@ -18,7 +18,7 @@
       <span class="stat-value">{{ counts.unassigned }}</span><span class="stat-label">Unassigned</span>
       <span class="stat-sub">Waiting for someone to take them</span></a>
     <a class="stat" href="{{ url_for('tickets.queue', tab='mine') }}">
-      <span class="stat-value">{{ counts.mine }}</span><span class="stat-label">Mine</span>
+      <span class="stat-value">{{ counts.mine }}</span><span class="stat-label">Assigned to Me</span>
       <span class="stat-sub">Open tickets you have</span></a>
     <a class="stat{% if counts.overdue %} stat-bad{% endif %}" href="{{ url_for('tickets.queue', tab='overdue') }}">
       <span class="stat-value">{{ counts.overdue }}</span><span class="stat-label">Overdue</span>

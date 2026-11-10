@@ -316,3 +316,9 @@ def test_internal_messages_never_reach_the_customer(app, team):
         assert s.scalar(select(Message.is_internal)) is True
     assert "seems confused" not in page(browser(app, team["customer"]), f"/tickets/{number}")
     assert "seems confused" in page(browser(app, team["agent"]), f"/tickets/{number}")
+
+
+def test_the_tab_for_your_own_tickets_is_called_assigned_to_me(app, team):
+    agent = browser(app, team["agent"])
+    assert "Assigned to Me" in page(agent, "/queue")
+    assert "Assigned to Me" in page(agent, "/")
