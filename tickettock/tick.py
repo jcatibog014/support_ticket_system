@@ -80,7 +80,9 @@ def run_desk(s, desk, now):
 
 
 def run(s, now):
-    report = {"escalated": 0, "closed": 0}
+    from .auth import purge_demos
+    report = {"escalated": 0, "closed": 0, "demos_deleted": purge_demos(s, now)}
+    s.commit()
     desks = s.scalars(select(Desk).where(or_(Desk.is_demo.is_(False), Desk.demo_expires_at > now))).all()
     for desk in desks:
         escalated, closed = run_desk(s, desk, now)

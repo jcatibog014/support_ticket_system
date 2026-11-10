@@ -193,7 +193,34 @@ function setUpBulk() {
   update();
 }
 
+// The service worker (installable app, offline page) and the "Install the app" button in Settings.
+// Browsers that can install it fire "beforeinstallprompt"; only then does the button show.
+function setUpInstall() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Not a problem: the site works the same without it.
+    });
+  }
+  const button = document.querySelector("[data-install]");
+  if (!button) return;
+  let offer = null;
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault(); // our own button instead of the browser's banner
+    offer = event;
+    button.hidden = false;
+  });
+  button.addEventListener("click", async () => {
+    if (!offer) return;
+    offer.prompt();
+    await offer.userChoice;
+    offer = null;
+    button.hidden = true;
+  });
+  window.addEventListener("appinstalled", () => (button.hidden = true));
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  setUpInstall();
   setUpSuggestions();
   setUpSavedReplies();
   setUpLooking();

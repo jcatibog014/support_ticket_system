@@ -20,13 +20,13 @@ from datetime import timedelta
 import click
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, session, url_for
 from flask.cli import with_appcontext
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import audit, db, desks, invites, mailer, permissions
 from .dates import utcnow
-from .models import ADMIN, CUSTOMER, Desk, User
+from .models import A_ROLE, ADMIN, CUSTOMER, LEAD, Desk, User
 
 bp = Blueprint("auth", __name__)
 
@@ -40,6 +40,10 @@ MAX_FAILED_LOGINS = 5
 LOCK_TIME = timedelta(minutes=15)
 # No 0/O or 1/I/L, so a code copied by hand is read back the same.
 RECOVERY_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+# Every Try Demo makes its own sample desk (seed.py), deleted after 24 hours.
+# This many at once is plenty, and keeps a script pressing Try Demo from filling the free database.
+MAX_DEMOS = 300
 
 WRONG_LOGIN = "Wrong email or password."
 WRONG_RECOVERY = "Wrong email or recovery code."
@@ -289,6 +293,53 @@ def login():
     return render_template("login.html", error=error, email=email, next=next_page), status
 
 
+def purge_demos(s, moment):
+    """Delete every demo desk that has run out. The database deletes everything in it (ON DELETE CASCADE)."""
+    gone = s.execute(delete(Desk).where(Desk.is_demo.is_(True), Desk.demo_expires_at <= moment)
+                     .execution_options(synchronize_session=False))
+    return gone.rowcount
+
+
+@bp.post("/demo")
+def demo():
+    """A fresh sample desk for this visitor alone. Nobody sees anyone else's demo,
+    and the real desk is never touched."""
+    from . import seed
+    s = db.session()
+    moment = utcnow()
+    if g.user is not None and g.user.is_demo:
+        return redirect(url_for("main.home"))  # this browser already has one
+    purge_demos(s, moment)
+    s.commit()
+    if s.scalar(select(func.count()).select_from(Desk).where(Desk.is_demo.is_(True))) >= MAX_DEMOS:
+        flash("The demo is very busy right now. Please try again in a little while.", "error")
+        return redirect(url_for("auth.login"))
+    desk, people = seed.build(s, moment)
+    s.commit()
+    log_in(seed.view_as_user(s, desk, LEAD))
+    flash("Welcome to the demo! You are Ben Torres, a Team Lead at Kape Cloud. "
+          "Use View As to be a customer, an agent or the admin.")
+    return redirect(url_for("main.home"))
+
+
+@bp.post("/demo/view-as")
+@login_required
+def view_as():
+    """Play another role in your own demo desk: log in as that sample person."""
+    from . import seed
+    if not g.user.is_demo:
+        abort(403, "View As is only for the demo.")
+    role = request.form.get("role", "")
+    if role not in seed.VIEW_AS:
+        abort(400, "Choose a role from the list.")
+    person = seed.view_as_user(db.session(), g.desk, role)
+    if person is None or not person.is_active:
+        abort(409, "That sample person isn't here any more (switched off in Staff).")
+    log_in(person)  # keeps the CSRF token: it is the same visitor
+    flash(f"You are now {person.name}, {A_ROLE[person.role]}.")
+    return redirect(home_for(person))
+
+
 @bp.route("/signup", methods=["GET", "POST"])
 def signup():
     """Customers only. Staff join with an invite link (join below)."""
@@ -499,8 +550,18 @@ def set_password_command(email):
     click.echo("The password is changed.")
 
 
+@click.command("purge-demos")
+@with_appcontext
+def purge_demos_command():
+    """Delete the demos that have run out (starting a demo does this too)."""
+    s = db.session()
+    count = purge_demos(s, utcnow())
+    s.commit()
+    click.echo(f"Deleted {count} old demo desks.")
+
+
 def init_app(app):
     app.jinja_env.globals["csrf_token"] = csrf_token
     app.jinja_env.globals["can"] = permissions
-    for command in (create_admin_command, set_password_command):
+    for command in (create_admin_command, set_password_command, purge_demos_command):
         app.cli.add_command(command)

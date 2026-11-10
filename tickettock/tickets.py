@@ -326,3 +326,10 @@ def bulk(s, user, rows, action, value, now):
         except workflow.TicketChanged:
             skipped += 1
     return done, skipped
+
+
+def rate(s, ticket, customer, stars, comment, now):
+    """The customer's rating (permissions.can_rate checks who): saved, in the history, and told to the assignee."""
+    workflow.apply(s, ticket, now, rating=stars, rating_comment=comment, rated_at=now)
+    audit.log(s, ticket.desk_id, customer, audit.RATED, now, ticket=ticket, field="rating", new=str(stars), note=comment)
+    notify.send(s, ticket.assignee, ticket, "rated", customer, now, f"{stars} out of 5")

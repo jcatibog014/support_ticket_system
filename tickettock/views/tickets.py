@@ -407,14 +407,11 @@ def rate(number):
         flash("Choose from 1 to 5 stars.", "error")
         return _back(ticket, "rate")
     comment = request.form.get("comment", "").strip()[:500]
-    now = utcnow()
     try:
-        workflow.apply(s, ticket, now, rating=stars, rating_comment=comment, rated_at=now)
+        tickets.rate(s, ticket, g.user, stars, comment, utcnow())
     except TicketChanged as error:
         flash(error.message, "error")
         return _back(ticket)
-    audit.log(s, ticket.desk_id, g.user, audit.RATED, now, ticket=ticket, field="rating", new=str(stars), note=comment)
-    notify.send(s, ticket.assignee, ticket, "rated", g.user, now, f"{stars} out of 5")
     s.commit()
     flash("Thank you for rating our help!")
     return _back(ticket)

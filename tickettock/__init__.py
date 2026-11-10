@@ -29,6 +29,8 @@ CONTENT_SECURITY_POLICY = "; ".join([
     "font-src 'self'",
     "img-src 'self' data:",
     "connect-src 'self'",
+    "worker-src 'self'",  # the service worker, /sw.js
+    "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -110,6 +112,14 @@ def create_app(test_config=None):
     @app.get("/healthz")
     def healthz():
         return "ok"
+
+    @app.get("/sw.js")
+    def service_worker():
+        # From the top of the site, not /static/: a service worker only looks after
+        # the pages below the address it came from.
+        response = app.send_static_file("sw.js")
+        response.headers["Cache-Control"] = "no-cache"  # always check for a new version
+        return response
 
     @app.get("/favicon.ico")
     def favicon():

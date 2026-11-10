@@ -42,3 +42,12 @@ def test_pages_link_the_icons(client):
     assert b"icons/favicon.ico" in page and b"site.webmanifest" in page and b"apple-touch-icon" in page
     assert client.get("/favicon.ico").status_code == 200
     assert "manifest" in client.get("/static/site.webmanifest").content_type
+
+
+def test_the_app_can_be_installed(client):
+    worker = client.get("/sw.js")
+    assert worker.status_code == 200 and "javascript" in worker.content_type
+    assert worker.headers["Cache-Control"] == "no-cache"
+    for path in ("/static/offline.html", "/static/theme.js", "/static/style.css"):
+        assert client.get(path).status_code == 200
+    assert "worker-src 'self'" in client.get("/login").headers["Content-Security-Policy"]

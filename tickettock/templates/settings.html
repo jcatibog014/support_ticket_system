@@ -18,6 +18,17 @@
       </fieldset>
     </section>
 
+    {% if g.user.is_demo %}
+      {% from "_view_as.html" import view_as_form with context %}
+      <section class="setting">
+        <div class="setting-text">
+          <h2>View As</h2>
+          <p>Be someone else at the demo's Kape Cloud: a customer, an agent, the team lead or the admin. Menus, buttons and pages change with the role.</p>
+        </div>
+        {{ view_as_form('view-as-settings', 'stack-tight') }}
+      </section>
+    {% endif %}
+
     {# The demo sees these as examples, switched off. The server refuses its changes anyway. #}
     {% set locked = 'disabled' if g.user.is_demo else '' %}
     <section class="setting">
@@ -82,6 +93,18 @@
           <div class="form-actions"><button class="button button-quiet" type="submit">Make a new code</button></div>
         </fieldset>
       </form>
+    </section>
+
+    <section class="setting">
+      <div class="setting-text">
+        <h2>Install the App</h2>
+        <p>Put Ticket Tock on your phone's home screen or your computer's app list. It opens in its own window.</p>
+      </div>
+      <div class="setting-links">
+        <button class="button button-quiet" type="button" data-install hidden>Install Ticket Tock</button>
+        <p class="muted small">On an iPhone: open this site in Safari, press Share, then Add to Home Screen.
+          On Android and computers: use the button above, or your browser's menu.</p>
+      </div>
     </section>
 
     <section class="setting">

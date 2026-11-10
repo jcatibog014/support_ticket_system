@@ -25,6 +25,15 @@
         <p class="card-note">Need help? <a href="{{ url_for('auth.signup', next=next or none) }}">Sign up</a> to send us a ticket
           &middot; <a href="{{ url_for('auth.forgot') }}">Forgot your password?</a></p>
       </div>
+      <p class="or-line">or</p>
+      <div class="card demo-card">
+        <h2>Just Looking?</h2>
+        <p>Explore a sample help desk with a team, customers and tickets in every state. Only you see it, and it is deleted after 24 hours.</p>
+        <form method="post" action="{{ url_for('auth.demo') }}">
+          {{ csrf() }}
+          <button class="button button-quiet" type="submit">Try demo</button>
+        </form>
+      </div>
       <p class="welcome-help"><a href="{{ url_for('help.index') }}">Browse the Help Articles</a> without logging in.</p>
     </section>
   </div>

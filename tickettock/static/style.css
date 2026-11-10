@@ -956,3 +956,8 @@ input[type="file"]::file-selector-button {
 .chart-table .table { margin-top: 0.5rem; }
 .team-table { font-size: 0.8125rem; }
 .stat-value.stat-none { font-size: 1.25rem; color: var(--muted); padding: 0.3rem 0; }
+.view-as label { font-size: 0.75rem; color: var(--sidebar-muted); }
+.setting .stack-tight label { font-weight: 600; font-size: 0.875rem; }
+.setting .view-as-row select { min-height: var(--control-height); }
+.offline-page { margin: 3rem auto; }
+.setting .view-as-row .button { height: var(--control-height); }

@@ -39,6 +39,10 @@
       {% endif %}
     </nav>
     <div class="sidebar-foot">
+      {% if g.user.is_demo %}
+        {% from "_view_as.html" import view_as_form with context %}
+        {{ view_as_form('view-as-side', 'view-as') }}
+      {% endif %}
       {# <details> opens and closes without JavaScript. app.js also closes it on an outside click. #}
       <details class="user-menu" data-popover>
         <summary>

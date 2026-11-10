@@ -11,7 +11,7 @@
 - [x] Stage 5 — Agent tools
 - [x] Stage 6 — Customer extras
 - [x] Stage 7 — Insights
-- [ ] Stage 8 — Demo, PWA, deploy, README
+- [x] Stage 8 — Demo, PWA, deploy, README
 
 Changes while building:
 - Stage 1: login is by email; status stamp colours are the darker, text-safe (4.5:1) versions of the planned ones.

@@ -1,0 +1,16 @@
+{# The demo's View As: be another sample person in your own demo desk. #}
+{% from "_macros.html" import csrf %}
+{% macro view_as_form(id, class='') %}
+  <form method="post" action="{{ url_for('auth.view_as') }}" class="{{ class }}">
+    {{ csrf() }}
+    <label for="{{ id }}">View as</label>
+    <div class="view-as-row">
+      <select name="role" id="{{ id }}" data-auto-submit>
+        {% for role, who in (('customer', 'Maria'), ('agent', 'Ana'), ('lead', 'Ben'), ('admin', 'Sam')) %}
+          <option value="{{ role }}"{% if g.user.role == role %} selected{% endif %}>{{ ROLE_NAMES[role] }} ({{ who }})</option>
+        {% endfor %}
+      </select>
+      <button class="button button-small" type="submit" data-auto-submit-button>Switch</button>
+    </div>
+  </form>
+{% endmacro %}
