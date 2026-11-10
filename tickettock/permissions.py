@@ -234,3 +234,10 @@ def can_rate(user, ticket):
     """The customer rates the help once, after it is solved (not a merged duplicate)."""
     return (_active(user) and _owns(user, ticket) and ticket.status in (RESOLVED, CLOSED)
             and ticket.rating is None and ticket.merged_into_id is None)
+
+
+# ---------- Insights ----------
+
+def can_view_insights(user):
+    """The desk's numbers and charts: Team Leads and Admins."""
+    return is_lead(user)

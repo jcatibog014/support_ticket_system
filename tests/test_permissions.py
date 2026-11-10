@@ -33,6 +33,7 @@ DESK_TABLE = [
     (can.can_manage_saved_replies,     [False,  False, True,  True]),
     (can.can_bulk_edit,                [False,  False, True,  True]),
     (can.can_manage_articles,          [False,  False, True,  True]),
+    (can.can_view_insights,            [False,  False, True,  True]),
 ]
 
 

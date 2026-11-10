@@ -908,3 +908,51 @@ input[type="file"]::file-selector-button {
 .prose th, .prose td { border: 1px solid var(--border); padding: 0.375rem 0.625rem; }
 .help-foot { display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px dashed var(--border-strong); }
 .helpful { display: flex; gap: 0.5rem; align-items: center; font-weight: 600; }
+
+/* ---------- Insights ---------- */
+
+.segmented { display: inline-flex; border: 1px solid var(--control-border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.segmented a { display: inline-flex; align-items: center; height: 2.25rem; padding: 0 0.875rem; font-size: 0.875rem; font-weight: 600; color: var(--muted); text-decoration: none; }
+.segmented a + a { border-left: 1px solid var(--border); }
+.segmented a:hover { color: var(--text); background: var(--surface-2); }
+.segmented a[aria-current="page"] { background: var(--accent-soft); color: var(--accent-text); }
+.stat-unit { font-size: 1rem; color: var(--muted); }
+
+/* Chart colours: one series = blue; Sent and Solved = blue and orange (dataviz validator, light and dark). */
+.chart-card { --series-1: #2a78d6; --series-2: #eb6834; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chart-card { --series-1: #3987e5; --series-2: #d95926; } }
+:root[data-theme="dark"] .chart-card { --series-1: #3987e5; --series-2: #d95926; }
+
+.dash-grid { display: grid; gap: 1rem; }
+@media (min-width: 64rem) { .dash-grid { grid-template-columns: 1fr 1fr; } .chart-wide { grid-column: 1 / -1; } }
+.dash-grid .card + .card { margin-top: 0; }
+.chart-card h2 { font-size: 1.0625rem; margin-bottom: 0.25rem; }
+.chart-card .lead { color: var(--muted); font-size: 0.8125rem; margin-bottom: 0.875rem; }
+.chart { width: 100%; height: auto; overflow: visible; }
+.chart text { font-family: var(--font-text); font-size: 14px; fill: var(--muted); }
+.chart .value-text { fill: var(--text); font-weight: 600; }
+.chart .gridline { stroke: var(--border); stroke-width: 1; }
+.chart .track { fill: var(--surface-2); }
+.chart .bar-series { fill: var(--series-1); }
+.chart .hit { fill: transparent; }
+.chart g:hover .track { fill: var(--border); }
+.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .line-sent { stroke: var(--series-1); }
+.chart .line-solved { stroke: var(--series-2); }
+/* Points: a ring of the card's colour keeps two dots on top of each other readable. */
+.chart .dot { stroke: var(--surface); stroke-width: 2; }
+.chart .dot-sent { fill: var(--series-1); }
+.chart .dot-solved { fill: var(--series-2); }
+.chart .crosshair { stroke: var(--border-strong); stroke-width: 1; stroke-dasharray: 3 3; visibility: hidden; }
+.chart .point:hover .crosshair { visibility: visible; }
+.chart .point:hover .dot { r: 6; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.375rem 1rem; font-size: 0.8125rem; color: var(--muted); margin-bottom: 0.5rem; }
+.legend li { display: inline-flex; align-items: center; gap: 0.375rem; }
+.key { display: inline-block; width: 1rem; height: 0.25rem; border-radius: 2px; }
+.key-sent { background: var(--series-1); }
+.key-solved { background: var(--series-2); }
+.chart-table { margin-top: 0.75rem; font-size: 0.8125rem; }
+.chart-table summary { cursor: pointer; color: var(--muted); }
+.chart-table .table { margin-top: 0.5rem; }
+.team-table { font-size: 0.8125rem; }
+.stat-value.stat-none { font-size: 1.25rem; color: var(--muted); padding: 0.3rem 0; }

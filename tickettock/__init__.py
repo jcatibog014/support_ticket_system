@@ -71,15 +71,17 @@ def create_app(test_config=None):
         # Without it we'd use a SQLite file, and Render forgets files on every restart.
         raise RuntimeError("Set the DATABASE_URL environment variable on Render (Neon's connection string).")
 
-    from . import auth, db, formatting, render, tick
+    from . import auth, db, formatting, insights, render, tick
     from .views import admin, audit as audit_views, help as help_views, inbox, main, tickets, tools as tool_views
+    from .views import insights as insight_views
 
     db.init_app(app)
     auth.init_app(app)
     formatting.init_app(app)
     render.init_app(app)
+    insights.init_app(app)
     # auth comes first: its before_request (load_user) must run before the others'.
-    for blueprint in (auth.bp, main.bp, tickets.bp, inbox.bp, audit_views.bp, admin.bp, tick.bp, tool_views.bp, help_views.bp):
+    for blueprint in (auth.bp, main.bp, tickets.bp, inbox.bp, audit_views.bp, admin.bp, tick.bp, tool_views.bp, help_views.bp, insight_views.bp):
         app.register_blueprint(blueprint)
 
     audit_views.init_app(app)
