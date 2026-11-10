@@ -38,7 +38,7 @@
   </form>
 
   {% if rows %}
-    <ul class="ticket-list">{% for ticket in rows %}{{ ticket_card(ticket) }}{% endfor %}</ul>
+    <ul class="ticket-list">{% for ticket in rows %}{{ ticket_card(ticket, clock=sla_ctx.headline(ticket)) }}{% endfor %}</ul>
     {% if pages > 1 %}
       <nav class="pager" aria-label="Pages">
         {% if page > 1 %}<a class="button button-small button-quiet" href="{{ url_for('tickets.queue', tab=tab, q=q or none, category=category or none, priority=priority or none, page=page - 1) }}">Newer</a>{% endif %}

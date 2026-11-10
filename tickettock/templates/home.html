@@ -20,9 +20,9 @@
     <a class="stat" href="{{ url_for('tickets.queue', tab='mine') }}">
       <span class="stat-value">{{ counts.mine }}</span><span class="stat-label">Mine</span>
       <span class="stat-sub">Open tickets you have</span></a>
-    <a class="stat{% if urgent %} stat-bad{% endif %}" href="{{ url_for('tickets.queue', tab='open', priority='urgent') }}">
-      <span class="stat-value">{{ urgent }}</span><span class="stat-label">Urgent</span>
-      <span class="stat-sub">Open and marked Urgent</span></a>
+    <a class="stat{% if counts.overdue %} stat-bad{% endif %}" href="{{ url_for('tickets.queue', tab='overdue') }}">
+      <span class="stat-value">{{ counts.overdue }}</span><span class="stat-label">Overdue</span>
+      <span class="stat-sub">Late or escalated</span></a>
     <a class="stat" href="{{ url_for('tickets.queue', tab='waiting') }}">
       <span class="stat-value">{{ counts.waiting }}</span><span class="stat-label">Waiting on Customers</span>
       <span class="stat-sub">They owe us an answer</span></a>
@@ -35,7 +35,7 @@
     <div class="section-head"><h2>Your Tickets</h2>
       {% if counts.mine > mine|length %}<a href="{{ url_for('tickets.queue', tab='mine') }}">All {{ counts.mine }}</a>{% endif %}</div>
     {% if mine %}
-      <ul class="ticket-list">{% for ticket in mine %}{{ ticket_card(ticket) }}{% endfor %}</ul>
+      <ul class="ticket-list">{% for ticket in mine %}{{ ticket_card(ticket, clock=sla_ctx.headline(ticket)) }}{% endfor %}</ul>
     {% else %}
       <div class="empty-state">
         {{ icon('empty', 48) }}

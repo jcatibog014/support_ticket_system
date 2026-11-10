@@ -8,8 +8,13 @@
   <span class="priority priority-{{ ticket_priority }}" title="Priority: {{ name }}">{{ icon('priority-' ~ ticket_priority, 16) }} {{ name }}</span>
 {% endmacro %}
 
+{# An SLA clock (sla.Clock) as a small line: "First reply due in 45 min". #}
+{% macro clock_tag(clock) %}
+  {% if clock %}<span class="sla sla-{{ clock.state }}" title="Due {{ clock.due|nice_datetime }}">{{ icon('clock', 14) }} {{ clock.label }}</span>{% endif %}
+{% endmacro %}
+
 {# One ticket as a stub card: the details on the left, a dashed tear line, then the stub with the status. #}
-{% macro ticket_card(ticket, staff_view=True) %}
+{% macro ticket_card(ticket, staff_view=True, clock=None) %}
   <li class="ticket-stub status-{{ ticket.status }}">
     <div class="stub-main">
       <p class="stub-top"><span class="ticket-key">{{ ticket.key }}</span>
@@ -20,6 +25,9 @@
         <span>Sent {{ ticket.created_at|ago }}</span>
         {% if ticket.updated_at != ticket.created_at %} &middot; <span>Updated {{ ticket.updated_at|ago }}</span>{% endif %}
       </p>
+      {% if staff_view and (clock or ticket.escalated_at) %}
+        <p class="stub-clock">{{ clock_tag(clock) }}{% if ticket.escalated_at %}<span class="sla sla-late">{{ icon('alarm', 14) }} Escalated</span>{% endif %}</p>
+      {% endif %}
     </div>
     <div class="stub-side">
       {{ stamp(ticket.status, ticket.status_name) }}

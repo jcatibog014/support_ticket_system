@@ -1,17 +1,21 @@
-"""The Admin's pages: Staff (people, roles, invite links) and Categories.
+"""The Admin's pages: Staff (people, roles, invite links), Categories, and Time Limits
+(working hours, the SLA limits per priority, holidays).
 
 Every view asks permissions.py first. A page someone may not open is 403:
 everyone knows the Admin pages exist, so there is nothing to hide with a 404.
 """
+from datetime import date
+
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from .. import audit, db, desks, invites
+from .. import audit, db, desks, hours, invites, sla
 from .. import permissions as can
 from ..auth import login_required, not_for_demo, require
-from ..dates import utcnow
-from ..models import A_ROLE, ROLE_NAMES, STAFF_ROLES, Category, Invite, User
+from ..dates import today, utcnow
+from ..models import (A_ROLE, PRIORITIES, PRIORITY_NAMES, ROLE_NAMES, STAFF_ROLES, Category, Holiday, Invite, SlaRule,
+                      User)
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -188,3 +192,137 @@ def edit_category(category_id):
         s.rollback()
         abort(409, "There is already a category with that name.")
     return redirect(url_for("admin.categories"))
+
+
+# ---------- Working hours, time limits and holidays ----------
+
+LIMIT_MAX_HOURS = 2000
+
+
+def _hours_text(minutes):
+    """Hours for a number box: 4, 0.5, 1.25."""
+    text = f"{minutes / 60:.2f}".rstrip("0").rstrip(".")
+    return text or "0"
+
+
+def _limits_text(rule):
+    return f"first reply {sla.short(rule[0])}, solved {sla.short(rule[1])}"
+
+
+def _parse_time(text):
+    """"08:30" -> 510, or None."""
+    try:
+        hour, minute = (int(part) for part in (text or "").split(":")[:2])
+    except ValueError:
+        return None
+    return hour * 60 + minute if 0 <= hour < 24 and 0 <= minute < 60 else None
+
+
+def _parse_hours(text):
+    try:
+        value = float((text or "").strip())
+    except ValueError:
+        return None
+    return round(value * 60) if 0.25 <= value <= LIMIT_MAX_HOURS else None
+
+
+@bp.route("/hours", methods=["GET", "POST"])
+@login_required
+def time_limits():
+    require(can.can_manage_hours(g.user), "Only an Admin can change the working hours and time limits.")
+    s = db.session()
+    now = utcnow()
+    errors = {}
+    if request.method == "POST":
+        not_for_demo("The demo can't change its time limits. Sign up to run your own desk.")
+        action = request.form.get("action")
+        if action == "hours":
+            opens, closes = _parse_time(request.form.get("open")), _parse_time(request.form.get("close"))
+            days = "".join(sorted({d for d in request.form.getlist("workdays") if d in "0123456" and len(d) == 1}))
+            if opens is None or closes is None or opens >= closes:
+                errors["hours"] = "The desk must close after it opens."
+            elif not days:
+                errors["hours"] = "Choose at least one working day."
+            else:
+                before = hours.describe(g.desk)
+                g.desk.open_minute, g.desk.close_minute, g.desk.workdays = opens, closes, days
+                if hours.describe(g.desk) != before:
+                    audit.log(s, g.desk.id, g.user, audit.HOURS_CHANGED, now, field="hours", old=before,
+                              new=hours.describe(g.desk))
+                s.commit()
+                flash("Working hours saved. New tickets use them now.")
+                return redirect(url_for("admin.time_limits"))
+        elif action == "limits":
+            rules = {rule.priority: rule for rule in s.scalars(select(SlaRule).where(SlaRule.desk_id == g.desk.id))}
+            new = {}
+            for priority in PRIORITIES:
+                response = _parse_hours(request.form.get(f"{priority}_response"))
+                resolve = _parse_hours(request.form.get(f"{priority}_resolve"))
+                if response is None or resolve is None:
+                    errors["limits"] = f"Use hours from 0.25 to {LIMIT_MAX_HOURS}."
+                elif response > resolve:
+                    errors["limits"] = f"{PRIORITY_NAMES[priority]}: the first reply can't take longer than solving it."
+                new[priority] = (response, resolve)
+            if not errors:
+                old = sla.rules_for(s, g.desk)
+                for priority, (response, resolve) in new.items():
+                    if old[priority] != (response, resolve):
+                        audit.log(s, g.desk.id, g.user, audit.SLA_CHANGED, now, field=priority,
+                                  old=_limits_text(old[priority]), new=_limits_text((response, resolve)))
+                    rule = rules.get(priority) or SlaRule(desk_id=g.desk.id, priority=priority)
+                    rule.response_minutes, rule.resolve_minutes = response, resolve
+                    s.add(rule)
+                s.commit()
+                flash("Time limits saved. They apply to new tickets, and when a ticket's priority changes.")
+                return redirect(url_for("admin.time_limits"))
+        elif action == "holiday":
+            name = request.form.get("name", "").strip()[:80]
+            try:
+                day = date.fromisoformat(request.form.get("day", ""))
+            except ValueError:
+                day = None
+            if day is None or not name:
+                errors["holiday"] = "Choose a day and give the holiday a name."
+            else:
+                s.add(Holiday(desk_id=g.desk.id, day=day, name=name))
+                try:
+                    audit.log(s, g.desk.id, g.user, audit.HOLIDAY_ADDED, now, new=day.isoformat(), note=name)
+                    s.commit()
+                except IntegrityError:
+                    s.rollback()
+                    errors["holiday"] = "That day is already a holiday."
+                else:
+                    flash(f"Added {name}.")
+                    return redirect(url_for("admin.time_limits"))
+        elif action == "ph_holidays":
+            year = request.form.get("year", type=int)
+            if year not in (today().year, today().year + 1):
+                abort(400, "Choose this year or next year.")
+            added = hours.add_ph_holidays(s, g.desk, year)
+            for holiday in added:
+                audit.log(s, g.desk.id, g.user, audit.HOLIDAY_ADDED, now, new=holiday.day.isoformat(), note=holiday.name)
+            s.commit()
+            flash(f"Added {len(added)} Philippine holidays for {year}." if added
+                  else f"The {year} holidays are already there.")
+            return redirect(url_for("admin.time_limits"))
+    rules = sla.rules_for(s, g.desk)
+    holidays = s.scalars(select(Holiday).where(Holiday.desk_id == g.desk.id, Holiday.day >= date(today().year, 1, 1))
+                         .order_by(Holiday.day)).all()
+    return render_template("admin/hours.html", errors=errors, rules=rules, holidays=holidays, today=today(),
+                           hours_text=_hours_text, weekdays=hours.WEEKDAY_NAMES, clock=hours.clock,
+                           described=hours.describe(g.desk), priorities=PRIORITIES,
+                           day_length=_hours_text(g.desk.close_minute - g.desk.open_minute) + " hours"), 400 if errors else 200
+
+
+@bp.post("/holidays/<int:holiday_id>/remove")
+@login_required
+def remove_holiday(holiday_id):
+    require(can.can_manage_hours(g.user), "Only an Admin can change the holidays.")
+    not_for_demo("The demo can't change its holidays. Sign up to run your own desk.")
+    s = db.session()
+    holiday = desks.get_in_desk(s, Holiday, holiday_id, g.desk)
+    audit.log(s, g.desk.id, g.user, audit.HOLIDAY_REMOVED, utcnow(), old=holiday.day.isoformat(), note=holiday.name)
+    s.delete(holiday)
+    s.commit()
+    flash(f"Removed {holiday.name}.")
+    return redirect(url_for("admin.time_limits"))

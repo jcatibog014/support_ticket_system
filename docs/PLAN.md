@@ -7,7 +7,7 @@
 - [x] Stage 1 — Foundation
 - [x] Stage 2 — Tickets + workflow
 - [x] Stage 3 — Audit history
-- [ ] Stage 4 — SLA & escalation
+- [x] Stage 4 — SLA & escalation (auto-close after 7 days came here too, from stage 6)
 - [ ] Stage 5 — Agent tools
 - [ ] Stage 6 — Customer extras
 - [ ] Stage 7 — Insights

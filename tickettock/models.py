@@ -3,6 +3,8 @@
     desks ──< users             (customers sign up; staff join with an invite)
       ├──< invites              (one-time links that add a staff member with a role)
       ├──< categories           ("Billing", "Login and account", ...)
+      ├──< sla_rules            (time limits per priority: first reply, solved)
+      ├──< holidays             (days the clock doesn't run)
       ├──< tickets ── customer_id, assignee_id ──> users
       │      └──< messages      (the conversation: the customer's and the team's replies)
       ├──< audit_events         (the history: append-only, each row chained to the one before)
@@ -16,9 +18,9 @@ is "not found".
 A person's role (customer, agent, team lead, admin) is stored on the user.
 What each role may do is in permissions.py, and only there.
 """
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .dates import utcnow
@@ -71,6 +73,13 @@ class Desk(Base):
     # The seq of the newest history line (audit.py). Raising it with an UPDATE
     # locks this row, so history lines are written one at a time per desk.
     audit_seq: Mapped[int] = mapped_column(Integer, default=0)
+    # Working hours (Philippine time), for the SLA clocks (hours.py). Minutes since
+    # midnight, and the open weekdays as digits: Monday is 0, so "01234" is Mon-Fri.
+    open_minute: Mapped[int] = mapped_column(Integer, default=8 * 60)
+    close_minute: Mapped[int] = mapped_column(Integer, default=17 * 60)
+    workdays: Mapped[str] = mapped_column(String(7), default="01234")
+    # When the timer (tick.py) last ran for this desk.
+    last_tick_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class User(Base):
@@ -195,6 +204,16 @@ class Ticket(Base):
     first_response_at: Mapped[datetime | None] = mapped_column(DateTime)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # The SLA clocks (sla.py): when the first reply and the fix are due. Waiting on
+    # the customer pauses the fix clock: paused_since is when it stopped, and
+    # paused_minutes adds up the working minutes it was stopped for.
+    response_due_at: Mapped[datetime | None] = mapped_column(DateTime)
+    resolve_due_at: Mapped[datetime | None] = mapped_column(DateTime)
+    paused_since: Mapped[datetime | None] = mapped_column(DateTime)
+    paused_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    # Escalated: a Team Lead was called in (late, or an Agent asked for help).
+    escalated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    escalation_reason: Mapped[str] = mapped_column(String(300), default="")
 
     customer: Mapped[User] = relationship(foreign_keys=[customer_id])
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id])
@@ -274,6 +293,29 @@ class AuditEvent(Base):
 
     ticket: Mapped[Ticket | None] = relationship()
     actor: Mapped[User | None] = relationship()
+
+
+class SlaRule(Base):
+    """The time limits for one priority, in WORKING minutes (hours.py)."""
+    __tablename__ = "sla_rules"
+    __table_args__ = (UniqueConstraint("desk_id", "priority"), CheckConstraint(PRIORITY_RULE, name="priority"))
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    desk_id: Mapped[int] = mapped_column(ForeignKey("desks.id", ondelete="CASCADE"), index=True)
+    priority: Mapped[str] = mapped_column(String(8))
+    response_minutes: Mapped[int] = mapped_column(Integer)
+    resolve_minutes: Mapped[int] = mapped_column(Integer)
+
+
+class Holiday(Base):
+    """A day the desk is closed: the SLA clocks don't run."""
+    __tablename__ = "holidays"
+    __table_args__ = (UniqueConstraint("desk_id", "day"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    desk_id: Mapped[int] = mapped_column(ForeignKey("desks.id", ondelete="CASCADE"), index=True)
+    day: Mapped[date] = mapped_column(Date)
+    name: Mapped[str] = mapped_column(String(80))
 
 
 # What an Inbox notice is about (notify.py writes them, inbox.html turns them into words).

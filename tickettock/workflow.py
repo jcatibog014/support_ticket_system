@@ -26,8 +26,8 @@ brings a Waiting ticket back to In Progress, or reopens a Resolved one.
 from sqlalchemy import update
 from sqlalchemy.orm.attributes import set_committed_value
 
-from . import audit, notify
-from .models import (CANCELLED, CLOSED, FINISHED, IN_PROGRESS, NEW, OPEN, RESOLVED, STATUS_NAMES, WAITING,
+from . import audit, hours, notify, sla
+from .models import (CANCELLED, CLOSED, FINISHED, IN_PROGRESS, NEW, OPEN, RESOLVED, STATUS_NAMES, WAITING, Desk,
                      Ticket)
 
 TRANSITIONS = {
@@ -122,6 +122,15 @@ def move(s, ticket, to, actor, now, resolution="", note=""):
         values.update(resolved_at=None, resolution="")
     if to in FINISHED:
         values["closed_at"] = now
+    # Waiting on the customer stops the "solved" clock (sla.py); coming back adds the
+    # working minutes it was stopped to the limit.
+    if to == WAITING:
+        values["paused_since"] = now
+    elif before == WAITING and ticket.paused_since is not None:
+        desk = s.get(Desk, ticket.desk_id)
+        paused = ticket.paused_minutes + hours.minutes_between(desk, ticket.paused_since, now, hours.holiday_days(s, desk))
+        values.update(paused_since=None, paused_minutes=paused,
+                      resolve_due_at=sla.targets(s, desk, ticket, paused_minutes=paused)["resolve_due_at"])
     apply(s, ticket, now, **values)
     audit.log(s, ticket.desk_id, actor, audit.STATUS, now, ticket=ticket, field="status", old=before, new=to,
               note=resolution.strip() if to == RESOLVED else note)

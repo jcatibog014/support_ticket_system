@@ -7,7 +7,7 @@ ticket changed since, the change is refused and the page shows the new state.
 """
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
-from .. import audit, db, desks, tickets, workflow
+from .. import audit, db, desks, sla, tick, tickets, workflow
 from .. import permissions as can
 from ..auth import login_required, require
 from ..dates import utcnow
@@ -96,6 +96,8 @@ def new():
 def queue():
     require(can.is_staff(g.user), "The queue is for the support team.")
     s = db.session()
+    now = utcnow()
+    tick.run_if_due(s, g.desk, now)
     tab = request.args.get("tab", "unassigned")
     if tab not in tickets.QUEUE_TABS:
         tab = "unassigned"
@@ -116,7 +118,7 @@ def queue():
                            priority=priority, page=page, pages=max(1, -(-total // tickets.PAGE_SIZE)),
                            counts=tickets.tab_counts(s, g.user), tab_titles=tickets.TAB_TITLES,
                            categories=desks.categories(s, g.desk, active_only=False),
-                           priority_names=PRIORITY_NAMES)
+                           priority_names=PRIORITY_NAMES, sla_ctx=sla.Context(s, g.desk, now))
 
 
 # ---------- One ticket ----------
@@ -137,7 +139,8 @@ def show(number):
         staff=tickets.staff_on(s, g.desk) if can.can_assign(g.user, ticket) else [],
         categories=tickets.category_choices(s, g.desk, ticket.category_id),
         priorities=PRIORITIES, priority_names=PRIORITY_NAMES, status_names=STATUS_NAMES,
-        history=audit.for_ticket(s, ticket, can.is_staff(g.user)))
+        history=audit.for_ticket(s, ticket, can.is_staff(g.user)),
+        clocks=sla.Context(s, g.desk, now).clocks(ticket) if can.is_staff(g.user) else (None, None))
 
 
 @bp.post("/tickets/<int:number>/reply")
@@ -256,4 +259,33 @@ def move(number):
         flash(error.message, "error")
         return _back(ticket)
     flash(f"{ticket.key} is now {STATUS_NAMES[to]}.")
+    return _back(ticket)
+
+
+@bp.post("/tickets/<int:number>/escalate")
+@login_required
+def escalate(number):
+    s, ticket = _load(number)
+    require(can.can_escalate(g.user, ticket), "You can't escalate this ticket.")
+    reason = request.form.get("reason", "").strip()
+    if not reason:
+        flash("Say what help you need, so the Team Lead knows.", "error")
+        return _back(ticket)
+    if _fresh(ticket):
+        if tick.escalate(s, ticket, utcnow(), reason, actor=g.user):
+            s.commit()
+            flash("The Team Leads were asked to help.")
+        else:
+            s.rollback()
+            flash(TicketChanged.message, "error")
+    return _back(ticket)
+
+
+@bp.post("/tickets/<int:number>/clear-escalation")
+@login_required
+def clear_escalation(number):
+    s, ticket = _load(number)
+    require(can.can_clear_escalation(g.user, ticket), "Only a Team Lead can mark an escalation as handled.")
+    if _fresh(ticket) and _save(s, ticket, tick.clear_escalation):
+        flash("The escalation is marked as handled.")
     return _back(ticket)

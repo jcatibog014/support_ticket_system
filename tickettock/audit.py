@@ -36,6 +36,10 @@ REPLIED, NOTED = "replied", "noted"
 ROLE_CHANGED, SWITCHED_OFF, SWITCHED_ON = "role_changed", "switched_off", "switched_on"
 INVITE_MADE, INVITE_CANCELLED, JOINED = "invite_made", "invite_cancelled", "joined"
 CATEGORY_ADDED, CATEGORY_CHANGED = "category_added", "category_changed"
+HOURS_CHANGED, SLA_CHANGED = "hours_changed", "sla_changed"
+HOLIDAY_ADDED, HOLIDAY_REMOVED = "holiday_added", "holiday_removed"
+# The SLA (a ticket's):
+ESCALATED, DE_ESCALATED = "escalated", "de_escalated"
 
 LIMITS = {"actor_name": 80, "verb": 30, "field": 30, "old_value": 200, "new_value": 200, "note": 300}
 
@@ -104,11 +108,13 @@ def verify(s, desk):
 GROUPS = {
     "tickets": ("New tickets", (CREATED,)),
     "status": ("Status changes", (STATUS,)),
+    "escalations": ("Escalations", (ESCALATED, DE_ESCALATED)),
     "assign": ("Assignments", (ASSIGNED,)),
     "triage": ("Priority and category", (PRIORITY, CATEGORY)),
     "talk": ("Replies and notes", (REPLIED, NOTED)),
     "people": ("Staff and roles", (ROLE_CHANGED, SWITCHED_OFF, SWITCHED_ON, INVITE_MADE, INVITE_CANCELLED, JOINED)),
-    "settings": ("Desk settings", (CATEGORY_ADDED, CATEGORY_CHANGED)),
+    "settings": ("Desk settings", (CATEGORY_ADDED, CATEGORY_CHANGED, HOURS_CHANGED, SLA_CHANGED, HOLIDAY_ADDED,
+                                   HOLIDAY_REMOVED)),
 }
 PAGE_SIZE = 50
 

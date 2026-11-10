@@ -11,7 +11,7 @@ from flask import abort
 from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.orm import selectinload
 
-from . import audit, notify, workflow
+from . import audit, hours, notify, sla, workflow
 from . import permissions as can
 from .models import (ACTIVE, CANCELLED, CLOSED, IN_PROGRESS, NEW, OPEN, PRIORITY_NAMES, PRIORITY_RANK, RESOLVED,
                      STAFF_ROLES, STATUS_NAMES, TICKET_PREFIX, URGENT, WAITING, Category, Desk, Message, Ticket, User)
@@ -21,9 +21,9 @@ BODY_MAX = 5000
 PAGE_SIZE = 50
 
 # The staff queue's tabs: (key, title, a WHERE for it).
-QUEUE_TABS = ("unassigned", "mine", "open", "waiting", "resolved", "closed")
-TAB_TITLES = {"unassigned": "Unassigned", "mine": "Mine", "open": "All Open", "waiting": "Waiting",
-              "resolved": "Resolved", "closed": "Closed"}
+QUEUE_TABS = ("unassigned", "mine", "overdue", "open", "waiting", "resolved", "closed")
+TAB_TITLES = {"unassigned": "Unassigned", "mine": "Mine", "overdue": "Overdue", "open": "All Open",
+              "waiting": "Waiting", "resolved": "Resolved", "closed": "Closed"}
 
 
 def visible_filter(user):
@@ -96,10 +96,12 @@ def next_number(s, desk_id):
 
 def create(s, customer, subject, description, now, category=None, priority="normal"):
     """A new ticket from a customer (the caller commits)."""
+    desk = customer.desk
     ticket = Ticket(desk_id=customer.desk_id, number=next_number(s, customer.desk_id), subject=subject,
                     description=description, customer_id=customer.id,
                     category_id=category.id if category else None, priority=priority,
-                    created_at=now, updated_at=now)
+                    created_at=now, updated_at=now, paused_minutes=0,
+                    **sla.due_times(desk, now, priority, 0, sla.rules_for(s, desk), hours.holiday_days(s, desk)))
     ticket.customer = customer
     ticket.category = category
     s.add(ticket)
@@ -161,7 +163,8 @@ def set_priority(s, ticket, actor, priority, now):
     if priority == ticket.priority:
         return False
     before = ticket.priority
-    workflow.apply(s, ticket, now, priority=priority)
+    # A new priority means new time limits, still counted from when the ticket was sent.
+    workflow.apply(s, ticket, now, priority=priority, **sla.targets(s, s.get(Desk, ticket.desk_id), ticket, priority))
     audit.log(s, ticket.desk_id, actor, audit.PRIORITY, now, ticket=ticket, field="priority", old=before, new=priority)
     return True
 
@@ -184,7 +187,11 @@ def _priority_order():
     return case(*[(Ticket.priority == name, -rank) for name, rank in PRIORITY_RANK.items()], else_=0)
 
 
-def tab_filter(tab, user):
+def tab_filter(tab, user, now=None):
+    if tab == "overdue":
+        # Late on a time limit, or escalated by hand.
+        from .dates import utcnow
+        return or_(sla.overdue_filter(now or utcnow()), Ticket.escalated_at.is_not(None) & Ticket.status.in_(ACTIVE))
     return {
         "unassigned": Ticket.assignee_id.is_(None) & Ticket.status.in_(ACTIVE),
         "mine": (Ticket.assignee_id == user.id) & Ticket.status.in_(ACTIVE),
@@ -220,9 +227,9 @@ def queue(s, user, tab, filters, page=1):
     return rows, total
 
 
-def tab_counts(s, user):
+def tab_counts(s, user, now=None):
     base = select(func.count()).select_from(Ticket).where(visible_filter(user))
-    return {tab: s.scalar(base.where(tab_filter(tab, user))) for tab in QUEUE_TABS}
+    return {tab: s.scalar(base.where(tab_filter(tab, user, now))) for tab in QUEUE_TABS}
 
 
 def for_customer(s, user):

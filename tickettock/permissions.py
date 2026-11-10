@@ -158,3 +158,21 @@ def can_view_audit_log(user):
 def can_export_audit_log(user):
     """Download it as a CSV file: Admins only, since it holds every customer's email."""
     return is_admin(user)
+
+
+# ---------- Time limits (SLA) ----------
+
+def can_manage_hours(user):
+    """Working hours, time limits and holidays."""
+    return is_admin(user)
+
+
+def can_escalate(user, ticket):
+    """"Ask a Team Lead": the assignee (or any Lead) calls for help on an open ticket."""
+    return (is_staff(user) and can_view_ticket(user, ticket) and ticket.status in ACTIVE
+            and ticket.escalated_at is None and (is_lead(user) or _mine(user, ticket)))
+
+
+def can_clear_escalation(user, ticket):
+    """A Team Lead says "handled"."""
+    return is_lead(user) and can_view_ticket(user, ticket) and ticket.escalated_at is not None

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf, avatar %}
-{% from "_tickets.html" import stamp, priority as priority_tag %}
+{% from "_tickets.html" import stamp, priority as priority_tag, clock_tag %}
 {% from "_icons.html" import icon %}
 {% from "_history.html" import timeline %}
 {% set staff_view = g.user.is_staff %}
@@ -152,6 +152,41 @@
           <div><dt>Last Update</dt><dd>{{ ticket.updated_at|ago }}</dd></div>
         </dl>
       </section>
+
+      {% if staff_view and (clocks[0] or clocks[1] or ticket.escalated_at) %}
+        <section class="card">
+          <h2>Time Limits</h2>
+          {% if ticket.escalated_at %}
+            <div class="escalation">
+              <p><strong>{{ icon('alarm', 16) }} Escalated {{ ticket.escalated_at|ago }}</strong></p>
+              {% if ticket.escalation_reason %}<p>{{ ticket.escalation_reason }}</p>{% endif %}
+              {% if can.can_clear_escalation(g.user, ticket) %}
+                <form method="post" action="{{ url_for('tickets.clear_escalation', number=ticket.number) }}">
+                  {{ csrf() }}{{ version }}
+                  <button class="button button-small button-quiet" type="submit">Mark as handled</button>
+                </form>
+              {% endif %}
+            </div>
+          {% endif %}
+          <dl class="facts">
+            {% for clock in clocks if clock %}
+              <div><dt>{{ 'First Reply' if clock.kind == 'response' else 'Solved' }}</dt>
+                <dd>{{ clock_tag(clock) }}<span class="muted small">{{ 'Was due' if clock.state in ('met', 'missed') else 'Due' }} {{ clock.due|nice_datetime }}</span></dd></div>
+            {% endfor %}
+          </dl>
+          {% if can.can_escalate(g.user, ticket) %}
+            <details class="resolve-form section-gap">
+              <summary class="button button-quiet button-wide">{{ icon('alarm', 16) }} Ask a Team Lead</summary>
+              <form method="post" action="{{ url_for('tickets.escalate', number=ticket.number) }}" class="stack-tight">
+                {{ csrf() }}{{ version }}
+                <label class="field"><span class="field-label">What help do you need?</span>
+                  <textarea name="reason" rows="3" maxlength="300" required></textarea></label>
+                <button class="button" type="submit">Escalate</button>
+              </form>
+            </details>
+          {% endif %}
+        </section>
+      {% endif %}
 
       {% if moves or can_resolve %}
         <section class="card">

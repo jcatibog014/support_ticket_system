@@ -43,6 +43,18 @@
   {%- elif event.verb == 'category_changed' -%}
     {%- if event.field == 'name' -%}{{ who }} renamed the category {{ event.old_value }} to {{ event.new_value }}
     {%- else -%}{{ who }} {{ 'showed' if event.new_value == 'yes' else 'hid' }} the category {{ event.note }}{%- endif -%}
+  {%- elif event.verb == 'escalated' -%}
+    {{ who }} escalated it{{ on }} to the Team Leads{% if event.note %}: {{ event.note.rstrip('.') }}{% endif %}
+  {%- elif event.verb == 'de_escalated' -%}
+    {{ who }} marked the escalation{{ on }} as handled
+  {%- elif event.verb == 'hours_changed' -%}
+    {{ who }} changed the working hours to {{ event.new_value }}
+  {%- elif event.verb == 'sla_changed' -%}
+    {{ who }} changed the time limits for {{ PRIORITY_NAMES.get(event.field, event.field) }} to {{ event.new_value }} (was {{ event.old_value }})
+  {%- elif event.verb == 'holiday_added' -%}
+    {{ who }} added the holiday {{ event.note }} on {{ event.new_value }}
+  {%- elif event.verb == 'holiday_removed' -%}
+    {{ who }} removed the holiday {{ event.note }} on {{ event.old_value }}
   {%- else -%}
     {{ who }}: {{ event.verb }}{{ on }}
   {%- endif -%}

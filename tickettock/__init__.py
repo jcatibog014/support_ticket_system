@@ -55,6 +55,9 @@ def create_app(test_config=None):
         # Optional Gmail (an app password): Inbox notices are also emailed.
         MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
         MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
+        # The secret the GitHub Actions timer sends to POST /tasks/tick (tick.py).
+        TICK_KEY=os.environ.get("TICK_KEY"),
+        BASE_URL=os.environ.get("BASE_URL"),
     )
     if test_config:
         app.config.update(test_config)
@@ -68,17 +71,18 @@ def create_app(test_config=None):
         # Without it we'd use a SQLite file, and Render forgets files on every restart.
         raise RuntimeError("Set the DATABASE_URL environment variable on Render (Neon's connection string).")
 
-    from . import auth, db, formatting
+    from . import auth, db, formatting, tick
     from .views import admin, audit as audit_views, inbox, main, tickets
 
     db.init_app(app)
     auth.init_app(app)
     formatting.init_app(app)
     # auth comes first: its before_request (load_user) must run before the others'.
-    for blueprint in (auth.bp, main.bp, tickets.bp, inbox.bp, audit_views.bp, admin.bp):
+    for blueprint in (auth.bp, main.bp, tickets.bp, inbox.bp, audit_views.bp, admin.bp, tick.bp):
         app.register_blueprint(blueprint)
 
     audit_views.init_app(app)
+    tick.init_app(app)
     app.jinja_env.globals["APP_NAME"] = APP_NAME
     from .models import A_ROLE, PRIORITY_NAMES, ROLE_NAMES, STATUS_NAMES
     app.jinja_env.globals.update(STATUS_NAMES=STATUS_NAMES, PRIORITY_NAMES=PRIORITY_NAMES, ROLE_NAMES=ROLE_NAMES,

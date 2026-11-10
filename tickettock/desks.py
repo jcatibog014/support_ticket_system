@@ -31,6 +31,8 @@ def create_desk(s, name=MAIN_DESK_NAME, **fields):
     s.flush()
     for position, (category, description) in enumerate(STARTER_CATEGORIES):
         s.add(Category(desk_id=desk.id, name=category, description=description, position=position))
+    from . import sla
+    sla.make_default_rules(s, desk)
     return desk
 
 

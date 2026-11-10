@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% from "_icons.html" import icon %}
+{% block title %}Time Limits - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Time Limits</h1>
+      <p class="lead">How fast the team promises to answer. The clocks only run in working hours, and stop while a ticket waits on the customer.</p>
+    </div>
+  </div>
+  {% set locked = 'disabled' if g.user.is_demo else '' %}
+  <div class="settings">
+    <section class="setting">
+      <div class="setting-text">
+        <h2>Working Hours</h2>
+        <p>Now: {{ described }}, Philippine time.</p>
+      </div>
+      <form method="post" class="stack">
+        {{ csrf() }}
+        <input type="hidden" name="action" value="hours">
+        <fieldset class="stack plain-fieldset" {{ locked }}>
+          {% if errors.hours %}<p class="form-error">{{ errors.hours }}</p>{% endif %}
+          <div class="field-row">
+            <label class="field"><span class="field-label">Opens</span>
+              <input type="time" name="open" value="{{ '%02d:%02d' % (g.desk.open_minute // 60, g.desk.open_minute % 60) }}" required></label>
+            <label class="field"><span class="field-label">Closes</span>
+              <input type="time" name="close" value="{{ '%02d:%02d' % (g.desk.close_minute // 60, g.desk.close_minute % 60) }}" required></label>
+          </div>
+          <fieldset class="plain-fieldset">
+            <legend class="field-label">Working days</legend>
+            <div class="day-picks">
+              {% for name in weekdays %}
+                <label class="day-pick"><input type="checkbox" name="workdays" value="{{ loop.index0 }}"{% if loop.index0|string in g.desk.workdays %} checked{% endif %}>
+                  <span>{{ name[:3] }}</span></label>
+              {% endfor %}
+            </div>
+          </fieldset>
+          <div class="form-actions"><button class="button" type="submit">Save hours</button></div>
+        </fieldset>
+      </form>
+    </section>
+
+    <section class="setting">
+      <div class="setting-text">
+        <h2>Limits per Priority</h2>
+        <p>In working hours. A working day is {{ day_length }}. New limits apply to new tickets, and when a ticket's priority changes.</p>
+      </div>
+      <form method="post" class="stack">
+        {{ csrf() }}
+        <input type="hidden" name="action" value="limits">
+        <fieldset class="stack plain-fieldset" {{ locked }}>
+          {% if errors.limits %}<p class="form-error">{{ errors.limits }}</p>{% endif %}
+          <table class="table limits-table">
+            <thead><tr><th>Priority</th><th>First reply within</th><th>Solved within</th></tr></thead>
+            <tbody>
+              {% for priority in priorities %}
+                {% set response, resolve = rules[priority] %}
+                <tr>
+                  <th scope="row"><span class="priority priority-{{ priority }}">{{ icon('priority-' ~ priority, 16) }} {{ PRIORITY_NAMES[priority] }}</span></th>
+                  <td><label class="limit-box"><span class="visually-hidden">{{ PRIORITY_NAMES[priority] }}: first reply within</span>
+                    <input type="number" name="{{ priority }}_response" value="{{ hours_text(response) }}" min="0.25" max="2000" step="0.25" required> h</label></td>
+                  <td><label class="limit-box"><span class="visually-hidden">{{ PRIORITY_NAMES[priority] }}: solved within</span>
+                    <input type="number" name="{{ priority }}_resolve" value="{{ hours_text(resolve) }}" min="0.25" max="2000" step="0.25" required> h</label></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <div class="form-actions"><button class="button" type="submit">Save limits</button></div>
+        </fieldset>
+      </form>
+    </section>
+
+    <section class="setting">
+      <div class="setting-text">
+        <h2>Holidays</h2>
+        <p>The clocks don't run on these days. Eid'l Fitr, Eid'l Adha and Chinese New Year are announced each year, so add those by hand.</p>
+      </div>
+      <div class="stack">
+        {% if holidays %}
+          <ul class="holiday-list">
+            {% for holiday in holidays %}
+              <li class="{% if holiday.day < today %}is-past{% endif %}">
+                <span class="holiday-day">{{ holiday.day|nice_date }}</span>
+                <span class="holiday-name">{{ holiday.name }}</span>
+                <form method="post" action="{{ url_for('admin.remove_holiday', holiday_id=holiday.id) }}">
+                  {{ csrf() }}
+                  <button class="icon-button" type="submit" title="Remove" {{ locked }}>{{ icon('x', 16) }}<span class="visually-hidden">Remove {{ holiday.name }}</span></button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted">No holidays yet.</p>
+        {% endif %}
+        <form method="post" class="stack">
+          {{ csrf() }}
+          <input type="hidden" name="action" value="holiday">
+          <fieldset class="stack plain-fieldset" {{ locked }}>
+            {% if errors.holiday %}<p class="form-error">{{ errors.holiday }}</p>{% endif %}
+            <div class="field-row">
+              <label class="field"><span class="field-label">Day</span><input type="date" name="day" required></label>
+              <label class="field"><span class="field-label">Name</span><input type="text" name="name" maxlength="80" required></label>
+            </div>
+            <div class="form-actions">
+              <button class="button button-quiet" type="submit" form="ph-{{ today.year }}">Add Philippine holidays for {{ today.year }}</button>
+              <button class="button button-quiet" type="submit" form="ph-{{ today.year + 1 }}">For {{ today.year + 1 }}</button>
+              <button class="button" type="submit">Add holiday</button>
+            </div>
+          </fieldset>
+        </form>
+        {% for year in (today.year, today.year + 1) %}
+          <form method="post" id="ph-{{ year }}" hidden>
+            {{ csrf() }}
+            <input type="hidden" name="action" value="ph_holidays">
+            <input type="hidden" name="year" value="{{ year }}">
+          </form>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+{% endblock %}
