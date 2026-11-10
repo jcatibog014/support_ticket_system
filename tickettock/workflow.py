@@ -131,7 +131,14 @@ def move(s, ticket, to, actor, now, resolution="", note=""):
         paused = ticket.paused_minutes + hours.minutes_between(desk, ticket.paused_since, now, hours.holiday_days(s, desk))
         values.update(paused_since=None, paused_minutes=paused,
                       resolve_due_at=sla.targets(s, desk, ticket, paused_minutes=paused)["resolve_due_at"])
+    # A solved or finished ticket needs no Team Lead any more: its escalation clears.
+    cleared = ticket.escalated_at is not None and to in (RESOLVED, CLOSED, CANCELLED)
+    if cleared:
+        values.update(escalated_at=None, escalation_reason="")
     apply(s, ticket, now, **values)
+    if cleared:
+        audit.log(s, ticket.desk_id, actor, audit.DE_ESCALATED, now, ticket=ticket, internal=True,
+                  note=f"Cleared by itself: the ticket is {STATUS_NAMES[to].lower()}.")
     audit.log(s, ticket.desk_id, actor, audit.STATUS, now, ticket=ticket, field="status", old=before, new=to,
               note=resolution.strip() if to == RESOLVED else note)
     notify.after_move(s, ticket, before, to, actor, now)

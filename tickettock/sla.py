@@ -31,6 +31,10 @@ DEFAULT_RULES = {
     NORMAL: (9 * 60, 5 * 9 * 60),
     LOW: (2 * 9 * 60, 10 * 9 * 60),
 }
+# Why the timer escalated a ticket (tick.py). An escalation clears by itself when its
+# reason is gone: the first reply is sent (tickets.reply), or the ticket is solved (workflow.move).
+FIRST_REPLY_LATE = "Nobody has replied yet, and the first reply is late."
+SOLVE_LATE = "It isn't solved yet, and the time to solve it has run out."
 SOON_SHARE = 0.25
 SOON_AT_LEAST = 30
 

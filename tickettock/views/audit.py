@@ -19,8 +19,11 @@ bp = Blueprint("audit", __name__)
 
 def _filters(s):
     """Read the page's filters: (what the form shows, what the query uses)."""
-    shown = {key: request.args.get(key, "").strip()[:80] for key in ("who", "what", "ticket", "since", "until")}
-    used = {"actor_name": shown["who"], "group": shown["what"]}
+    shown = {key: request.args.get(key, "").strip()[:80] for key in ("q", "who", "what", "ticket", "since", "until")}
+    used = {"actor_name": shown["who"], "group": shown["what"], "words": shown["q"]}
+    q_number = tickets.parse_key(shown["q"])
+    if q_number is not None:
+        used["words_ticket_id"] = s.scalar(select(Ticket.id).where(Ticket.desk_id == g.desk.id, Ticket.number == q_number))
     number = tickets.parse_key(shown["ticket"])
     if shown["ticket"]:
         found = s.scalar(select(Ticket.id).where(Ticket.desk_id == g.desk.id, Ticket.number == number)) \

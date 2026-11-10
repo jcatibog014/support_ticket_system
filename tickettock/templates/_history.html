@@ -29,9 +29,9 @@
   {%- elif event.verb == 'role_changed' -%}
     {{ who }} made {{ event.note }} {{ A_ROLE.get(event.new_value, event.new_value) }} (was {{ A_ROLE.get(event.old_value, event.old_value) }})
   {%- elif event.verb == 'switched_off' -%}
-    {{ who }} switched off the account of {{ event.note }}
+    {{ who }} deactivated the account of {{ event.note }}
   {%- elif event.verb == 'switched_on' -%}
-    {{ who }} switched on the account of {{ event.note }}
+    {{ who }} reactivated the account of {{ event.note }}
   {%- elif event.verb == 'invite_made' -%}
     {{ who }} made an invite link for {{ A_ROLE.get(event.new_value, event.new_value) }}
   {%- elif event.verb == 'invite_cancelled' -%}
@@ -47,7 +47,7 @@
   {%- elif event.verb == 'escalated' -%}
     {{ who }} escalated it{{ on }} to the Team Leads{% if event.note %}: {{ event.note.rstrip('.') }}{% endif %}
   {%- elif event.verb == 'de_escalated' -%}
-    {{ who }} marked the escalation{{ on }} as handled
+    {% if event.note %}{{ who }} cleared the escalation{{ on }} ({{ event.note|replace('Cleared by itself: ', '')|replace('.', '') }}){% else %}{{ who }} marked the escalation{{ on }} as handled{% endif %}
   {%- elif event.verb == 'hours_changed' -%}
     {{ who }} changed the working hours to {{ event.new_value }}
   {%- elif event.verb == 'sla_changed' -%}

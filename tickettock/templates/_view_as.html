@@ -1,9 +1,10 @@
 {# The demo's View As: be another sample person in your own demo desk. #}
 {% from "_macros.html" import csrf %}
+{% from "_icons.html" import icon %}
 {% macro view_as_form(id, class='') %}
   <form method="post" action="{{ url_for('auth.view_as') }}" class="{{ class }}">
     {{ csrf() }}
-    <label for="{{ id }}">View as</label>
+    <label for="{{ id }}">{{ icon('eye', 14) }} View as <span class="view-as-tag">Demo</span></label>
     <div class="view-as-row">
       <select name="role" id="{{ id }}" data-auto-submit>
         {% for role, who in (('customer', 'Maria'), ('agent', 'Ana'), ('lead', 'Ben'), ('admin', 'Sam')) %}

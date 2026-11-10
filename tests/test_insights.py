@@ -86,6 +86,7 @@ def test_ratings():
     assert dict(stars)[5] == 1 and dict(stars)[4] == 1 and (average, total) == (4.5, 2)
 
 
-@pytest.mark.parametrize("value, top", [(0, 5), (4, 5), (6, 10), (13, 15), (47, 50), (130, 150)])
-def test_nice_max(value, top):
-    assert insights.nice_max(value) == top
+@pytest.mark.parametrize("value, top, step", [(0, 1, 1), (3, 3, 1), (5, 5, 1), (6, 6, 2), (13, 15, 5),
+                                             (47, 50, 10), (130, 150, 50)])
+def test_the_axis_fits_the_data(value, top, step):
+    assert insights.axis(value) == (top, step)

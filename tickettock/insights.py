@@ -175,14 +175,20 @@ def line_points(values, width, height, top, most):
     return " ".join(f"{x},{y}" for x, y in points), points
 
 
+def axis(value):
+    """(top, step) for an axis that fits the data: at most 5 steps, each 1, 2, 5, 10, 20, 25, 50...
+    A busiest day of 3 gives 0-3; 6 gives 0-6 by 2; 13 gives 0-15 by 5; 47 gives 0-50 by 10."""
+    value = max(int(value), 1)
+    for step in (1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000):
+        steps = -(-value // step)
+        if steps <= 5:
+            return steps * step, step
+    return value, value
+
+
 def nice_max(value):
-    """A round top for an axis: 4 -> 5, 13 -> 15, 47 -> 50."""
-    if value <= 5:
-        return 5
-    for step in (5, 10, 20, 25, 50, 100, 200, 250, 500, 1000):
-        if value <= step * 5:
-            return -(-value // step) * step
-    return value
+    """The top of axis()."""
+    return axis(value)[0]
 
 
 def time_rows(found):

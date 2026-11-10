@@ -334,7 +334,7 @@ def view_as():
         abort(400, "Choose a role from the list.")
     person = seed.view_as_user(db.session(), g.desk, role)
     if person is None or not person.is_active:
-        abort(409, "That sample person isn't here any more (switched off in Staff).")
+        abort(409, "That sample person isn't here any more (deactivated in Staff).")
     log_in(person)  # keeps the CSRF token: it is the same visitor
     flash(f"You are now {person.name}, {A_ROLE[person.role]}.")
     return redirect(home_for(person))

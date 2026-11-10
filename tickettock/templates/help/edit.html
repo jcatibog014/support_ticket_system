@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf, field, textarea %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ 'Edit Article' if article.id else 'New Article' }} - {{ APP_NAME }}{% endblock %}
 {% block content %}
   <div class="page-head">
@@ -8,9 +9,18 @@
       <p class="lead">Write in Markdown: **bold**, # a heading, - a list, [a link](https://example.com).</p>
     </div>
   </div>
+  {% if preview %}
+    <section class="card help-article preview-card" aria-label="Preview">
+      <p class="kicker">Preview: not saved yet</p>
+      <h1>{{ article.title or 'No title yet' }}</h1>
+      <div class="prose">{{ article.body|markdown }}</div>
+    </section>
+  {% endif %}
   <div class="card new-ticket">
     <form method="post" class="stack">
       {{ csrf() }}
+      {# Pressing Enter uses the first button in a form: make that one Save, never Delete. #}
+      <button class="visually-hidden" type="submit" tabindex="-1" aria-hidden="true">Save article</button>
       {{ field('title', 'Title', article.title, errors.title, hint='Say it the way a customer would ask', attrs='required maxlength="120"') }}
       <label class="field">
         <span class="field-label">Category <span class="hint">Optional</span></span>
@@ -30,6 +40,7 @@
         {% else %}
           <a class="button button-quiet" href="{{ url_for('help.index') }}">Cancel</a>
         {% endif %}
+        <button class="button button-quiet" type="submit" name="action" value="preview" formnovalidate>{{ icon('eye', 16) }} Preview</button>
         <button class="button" type="submit">Save article</button>
       </div>
     </form>

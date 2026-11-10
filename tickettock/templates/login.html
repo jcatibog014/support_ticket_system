@@ -9,9 +9,6 @@
   <div class="welcome">
     {% include "_welcome.html" %}
     <section class="welcome-cards">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}<p class="flash welcome-flash{% if category == 'error' %} flash-error{% endif %}">{{ message }}</p>{% endfor %}
-      {% endwith %}
       <div class="card">
         <h1>Log In</h1>
         {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}

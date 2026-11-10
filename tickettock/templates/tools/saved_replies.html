@@ -7,10 +7,15 @@
   <div class="page-head">
     <div>
       <h1>Saved Replies</h1>
-      <p class="lead">Answers the team gives often. Pick one under the reply box on any ticket.
-        {% for key, meaning in placeholders.items() %}<code>{{ key }}</code> becomes {{ meaning }}{{ ',' if not loop.last else '.' }} {% endfor %}</p>
+      <p class="lead">Answers the team gives often. Pick one above the reply box on any ticket.</p>
     </div>
   </div>
+
+  <aside class="info-note">
+    {{ icon('bolt', 18) }}
+    <p><strong>Filled in for you:</strong>
+      {% for key, meaning in placeholders.items() %}<code>{{ key }}</code> becomes {{ meaning }}{{ ',' if not loop.last else '.' }} {% endfor %}</p>
+  </aside>
 
   {% if replies %}
     <ul class="reply-list">
@@ -18,7 +23,7 @@
         <li class="card saved-reply">
           {% if manage %}
             <details>
-              <summary><strong>{{ reply.title }}</strong> <span class="saved-reply-edit">{{ icon('pencil', 14) }} Edit</span></summary>
+              <summary><strong>{{ reply.title }}</strong> <span class="button button-small button-quiet saved-reply-edit">{{ icon('pencil', 14) }} Edit</span></summary>
               <form method="post" action="{{ url_for('tools.edit_saved_reply', reply_id=reply.id) }}" class="stack section-gap">
                 {{ csrf() }}
                 {{ field('title', 'Title', reply.title, attrs='required maxlength="80"') }}

@@ -106,7 +106,7 @@ def can_reply(user, ticket, now=None):
 
 
 def can_take(user, ticket):
-    """"Take it": a staff member gives an unassigned, unfinished ticket to themselves."""
+    """"Assign to me": a staff member gives an unassigned, unfinished ticket to themselves."""
     return is_staff(user) and can_view_ticket(user, ticket) and ticket.assignee_id is None and ticket.status in ACTIVE
 
 

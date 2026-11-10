@@ -21,7 +21,7 @@
         <input type="hidden" name="action" value="hours">
         <fieldset class="stack plain-fieldset" {{ locked }}>
           {% if errors.hours %}<p class="form-error">{{ errors.hours }}</p>{% endif %}
-          <div class="field-row">
+          <div class="time-row">
             <label class="field"><span class="field-label">Opens</span>
               <input type="time" name="open" value="{{ '%02d:%02d' % (g.desk.open_minute // 60, g.desk.open_minute % 60) }}" required></label>
             <label class="field"><span class="field-label">Closes</span>

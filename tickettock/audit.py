@@ -136,10 +136,19 @@ def for_ticket(s, ticket, staff_view):
     return s.scalars(query.order_by(AuditEvent.seq)).all()
 
 
-def search(s, desk, actor_name="", group="", ticket_id=None, since=None, until=None):
-    """The WHERE-built query for the Audit Log page and its CSV file (newest first)."""
+def search(s, desk, actor_name="", group="", ticket_id=None, since=None, until=None, words="", words_ticket_id=None):
+    """The WHERE-built query for the Audit Log page and its CSV file (newest first).
+    `words` is the search box: a person, a value or a note, or a ticket (words_ticket_id)."""
+    from sqlalchemy import func, or_
     from sqlalchemy.orm import selectinload
     query = select(AuditEvent).where(AuditEvent.desk_id == desk.id).options(selectinload(AuditEvent.ticket))
+    if words:
+        like = f"%{words.lower()}%"
+        matches = [func.lower(column).like(like) for column in (AuditEvent.actor_name, AuditEvent.note,
+                                                                 AuditEvent.old_value, AuditEvent.new_value)]
+        if words_ticket_id is not None:
+            matches.append(AuditEvent.ticket_id == words_ticket_id)
+        query = query.where(or_(*matches))
     if actor_name:
         query = query.where(AuditEvent.actor_name == actor_name)
     if group in GROUPS:

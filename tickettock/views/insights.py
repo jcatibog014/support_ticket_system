@@ -30,4 +30,4 @@ def index():
         reply_rows=insights.time_rows(insights.median_times(rows, g.desk, holidays, since, "first_response_at")),
         solve_rows=insights.time_rows(insights.median_times(rows, g.desk, holidays, since, "resolved_at")),
         team=insights.team_load(s, g.desk, rows, since), stars=stars, average=average, rated=rated,
-        sent=sum(row[2] for row in trend), solved=sum(row[3] for row in trend), nice_max=insights.nice_max)
+        sent=sum(row[2] for row in trend), solved=sum(row[3] for row in trend), axis=insights.axis)
