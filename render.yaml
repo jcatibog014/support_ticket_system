@@ -1,0 +1,41 @@
+# Render "Blueprint": tells Render how to build and run Ticket Tock.
+# Render reads this file when you choose New -> Blueprint and pick this repo.
+# The service name becomes the web address: ticket-tock.onrender.com
+# (Render adds a few letters if that name is already taken).
+# Every merge into main deploys the site again by itself.
+#
+# The data (tickets, people and history) lives in Neon (free PostgreSQL), not on
+# Render: Render's free plan forgets its files every time it restarts.
+# The step-by-step guide is docs/DEPLOY.md.
+services:
+  - type: web
+    name: ticket-tock
+    runtime: python  # the version comes from the .python-version file
+    plan: free  # sleeps after 15 quiet minutes; the next visit wakes it up (about 30-50 s)
+    region: singapore  # close to the Philippines, and to Neon's Singapore database
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    # First upgrade-db runs the Alembic migrations (it keeps all data, and does
+    # nothing when the tables are up to date). Then gunicorn calls create_app()
+    # to build the app and serves it on Render's port.
+    startCommand: flask --app tickettock upgrade-db && gunicorn "tickettock:create_app()" --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # Signs the login cookie. Render makes a long random one for us.
+      - key: SECRET_KEY
+        generateValue: true
+      # The secret the GitHub Actions timer sends to /tasks/tick (copy it into
+      # the repo's TICK_KEY secret). Render makes it.
+      - key: TICK_KEY
+        generateValue: true
+      # Neon's connection string (postgresql://...). Render asks for it when
+      # you make the Blueprint; it is never written in this file.
+      - key: DATABASE_URL
+        sync: false
+      # Optional: a Gmail address and its app password, to email Inbox notices.
+      # Leave them empty and everything stays in the Inbox.
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false

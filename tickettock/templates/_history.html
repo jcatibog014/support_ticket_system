@@ -1,0 +1,102 @@
+{# History lines as sentences. The stored line keeps the facts (verb, field, before, after);
+   the words live here, so they can change without touching the history. #}
+
+{% macro status_word(value) %}{{ STATUS_NAMES.get(value, value) }}{% endmacro %}
+
+{# with_who=False leaves the person out (the Audit Log has a Who column): "Moved it from ..." #}
+{% macro sentence(event, with_ticket=False, with_who=True) -%}
+  {%- set actor = event.actor_name -%}
+  {%- set who = actor if with_who else '' -%}
+  {%- set on = (' on ' ~ event.ticket.key) if with_ticket and event.ticket else '' -%}
+  {%- if event.verb == 'created' -%}
+    {{ who }} sent the ticket{{ on }}{% if with_ticket %}: {{ event.new_value }}{% endif %}
+  {%- elif event.verb == 'status' -%}
+    {{ who }} moved it{{ on }} from {{ status_word(event.old_value) }} to {{ status_word(event.new_value) }}
+  {%- elif event.verb == 'assigned' -%}
+    {%- if event.new_value and event.new_value == actor and not event.old_value -%}{{ who }} took it{{ on }}
+    {%- elif not event.new_value and event.old_value == actor -%}{{ who }} handed it back{{ on }}
+    {%- elif not event.new_value -%}{{ who }} took it{{ on }} off {{ event.old_value }}
+    {%- else -%}{{ who }} gave it{{ on }} to {{ event.new_value }}{% if event.old_value %} (it was with {{ event.old_value }}){% endif %}
+    {%- endif -%}
+  {%- elif event.verb == 'priority' -%}
+    {{ who }} changed the priority{{ on }} from {{ PRIORITY_NAMES.get(event.old_value, event.old_value) }} to {{ PRIORITY_NAMES.get(event.new_value, event.new_value) }}
+  {%- elif event.verb == 'category' -%}
+    {{ who }} {% if event.new_value %}put it{{ on }} in {{ event.new_value }}{% if event.old_value %} (it was {{ event.old_value }}){% endif %}{% else %}took the category off{{ on }}{% endif %}
+  {%- elif event.verb == 'replied' -%}
+    {{ who }} replied{{ on }}
+  {%- elif event.verb == 'noted' -%}
+    {{ who }} added an internal note{{ on }}
+  {%- elif event.verb == 'role_changed' -%}
+    {{ who }} made {{ event.note }} {{ A_ROLE.get(event.new_value, event.new_value) }} (was {{ A_ROLE.get(event.old_value, event.old_value) }})
+  {%- elif event.verb == 'switched_off' -%}
+    {{ who }} switched off the account of {{ event.note }}
+  {%- elif event.verb == 'switched_on' -%}
+    {{ who }} switched on the account of {{ event.note }}
+  {%- elif event.verb == 'invite_made' -%}
+    {{ who }} made an invite link for {{ A_ROLE.get(event.new_value, event.new_value) }}
+  {%- elif event.verb == 'invite_cancelled' -%}
+    {{ who }} cancelled an invite link for {{ A_ROLE.get(event.old_value, event.old_value) }}
+  {%- elif event.verb == 'joined' -%}
+    {{ who }} joined the team as {{ A_ROLE.get(event.new_value, event.new_value) }}
+  {%- elif event.verb == 'category_added' -%}
+    {{ who }} added the category {{ event.new_value }}
+  {%- elif event.verb == 'category_changed' -%}
+    {%- if event.field == 'name' -%}{{ who }} renamed the category {{ event.old_value }} to {{ event.new_value }}
+    {%- elif event.field == 'auto_assign' -%}{{ who }} turned auto-assign {{ 'on' if event.new_value == 'yes' else 'off' }} for {{ event.note }}
+    {%- else -%}{{ who }} {{ 'showed' if event.new_value == 'yes' else 'hid' }} the category {{ event.note }}{%- endif -%}
+  {%- elif event.verb == 'escalated' -%}
+    {{ who }} escalated it{{ on }} to the Team Leads{% if event.note %}: {{ event.note.rstrip('.') }}{% endif %}
+  {%- elif event.verb == 'de_escalated' -%}
+    {{ who }} marked the escalation{{ on }} as handled
+  {%- elif event.verb == 'hours_changed' -%}
+    {{ who }} changed the working hours to {{ event.new_value }}
+  {%- elif event.verb == 'sla_changed' -%}
+    {{ who }} changed the time limits for {{ PRIORITY_NAMES.get(event.field, event.field) }} to {{ event.new_value }} (was {{ event.old_value }})
+  {%- elif event.verb == 'holiday_added' -%}
+    {{ who }} added the holiday {{ event.note }} on {{ event.new_value }}
+  {%- elif event.verb == 'holiday_removed' -%}
+    {{ who }} removed the holiday {{ event.note }} on {{ event.old_value }}
+  {%- elif event.verb == 'merged' -%}
+    {{ who }} merged it{{ on }} into {{ event.new_value }}
+  {%- elif event.verb == 'merged_here' -%}
+    {{ who }} merged {{ event.old_value }} into this ticket
+  {%- elif event.verb == 'rated' -%}
+    {{ who }} rated the help{{ on }} {{ event.new_value }} out of 5{% if event.note %}: &ldquo;{{ event.note }}&rdquo;{% endif %}
+  {%- elif event.verb == 'attached' -%}
+    {{ who }} added {{ event.new_value }} picture{{ '' if event.new_value == '1' else 's' }}{{ on }}
+  {%- elif event.verb == 'article_added' -%}
+    {{ who }} wrote the Help Article {{ event.new_value }} ({{ event.note }})
+  {%- elif event.verb == 'article_changed' -%}
+    {{ who }} edited the Help Article {{ event.new_value }}{% if event.note %} ({{ event.note }}){% endif %}
+  {%- elif event.verb == 'article_removed' -%}
+    {{ who }} deleted the Help Article {{ event.old_value }}
+  {%- elif event.verb == 'reply_saved' -%}
+    {{ who }} added the saved reply {{ event.new_value }}
+  {%- elif event.verb == 'reply_changed' -%}
+    {{ who }} changed the saved reply {{ event.new_value }}
+  {%- elif event.verb == 'reply_removed' -%}
+    {{ who }} deleted the saved reply {{ event.old_value }}
+  {%- else -%}
+    {{ who }}: {{ event.verb }}{{ on }}
+  {%- endif -%}
+{%- endmacro %}
+
+{# A ticket's timeline. #}
+{% macro timeline(events) %}
+  <ol class="timeline">
+    {% for event in events %}
+      <li class="timeline-item{% if event.is_internal %} is-internal{% endif %}{% if event.verb == 'status' %} status-{{ event.new_value }}{% endif %}">
+        <span class="timeline-dot" aria-hidden="true"></span>
+        <p>{{ sentence(event) }}.{% if event.is_internal %} <span class="badge badge-internal">Team only</span>{% endif %}
+          {% if event.note and event.verb == 'status' and event.new_value != 'resolved' %}<span class="muted">{{ event.note }}</span>{% endif %}</p>
+        <time datetime="{{ event.created_at.isoformat() }}Z" title="{{ event.created_at|nice_datetime }}">{{ event.created_at|ago }}</time>
+      </li>
+    {% endfor %}
+  </ol>
+{% endmacro %}
+
+{# A sentence without the person, starting with a capital: "Moved it from Open to Resolved". #}
+{% macro what(event) -%}
+  {%- set line = sentence(event, with_who=False)|trim -%}
+  {{- line[:1]|upper }}{{ line[1:] -}}
+{%- endmacro %}

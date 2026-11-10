@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, avatar %}
+{% from "_tickets.html" import stamp, priority as priority_tag, clock_tag %}
+{% from "_icons.html" import icon %}
+{% from "_history.html" import timeline %}
+{% set staff_view = g.user.is_staff %}
+{% macro gallery(rows) %}
+  {% if rows %}
+    <ul class="gallery">
+      {% for row in rows %}
+        <li><a href="{{ url_for('tickets.picture', picture_id=row.id) }}" target="_blank" rel="noopener">
+          <img src="{{ url_for('tickets.picture_small', picture_id=row.id) }}" alt="{{ row.filename }}" loading="lazy"
+               width="{{ [row.width, 180]|min }}"></a></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endmacro %}
+{% set version %}<input type="hidden" name="version" value="{{ ticket.version }}">{% endset %}
+{% block title %}{{ ticket.key }} {{ ticket.subject }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <a class="back-link" href="{{ url_for('tickets.queue') if staff_view else url_for('tickets.mine') }}">{{ icon('back', 16) }} {{ 'Queue' if staff_view else 'My Tickets' }}</a>
+  <div class="ticket-layout">
+    <div class="ticket-main">
+      <header class="ticket-head">
+        <p class="ticket-key">{{ ticket.key }}</p>
+        <div class="title-row">
+          <h1 class="ticket-title">{{ ticket.subject }}</h1>
+          {{ stamp(ticket.status, ticket.status_name, big=True) }}
+        </div>
+        <p class="lead">Sent by {{ ticket.customer.name }} on {{ ticket.created_at|nice_datetime }}{% if ticket.category %} &middot; {{ ticket.category.name }}{% endif %}</p>
+        {% if ticket.merged_into %}
+          <p class="merged-note">{{ icon('merge', 16) }} Merged into <a href="{{ url_for('tickets.show', number=ticket.merged_into.number) }}">{{ ticket.merged_into.key }} {{ ticket.merged_into.subject }}</a>. Please follow that ticket.</p>
+        {% endif %}
+      </header>
+      {% if staff_view %}
+        {# app.js asks every 20 seconds who else has the ticket open, and updates this line. #}
+        <p class="looking" data-looking-url="{{ url_for('tickets.looking', number=ticket.number) }}"{% if not looking %} hidden{% endif %}>
+          {{ icon('eye', 16) }} <span data-looking-names>{% if looking %}{{ looking|map(attribute='name')|join(', ') }} {{ 'is' if looking|length == 1 else 'are' }} also looking at this ticket.{% endif %}</span></p>
+      {% endif %}
+
+      {% if ticket.status == 'resolved' or (ticket.status == 'closed' and ticket.resolution) %}
+        <section class="card resolution-card">
+          <h2>{{ icon('check') }} How It Was Solved</h2>
+          <p>{{ ticket.resolution }}</p>
+          {% if ticket.status == 'resolved' and not staff_view %}
+            <p class="reply-note section-gap">{% if reopen_open %}Still not working? Reply below or reopen it until {{ reopen_until|nice_date }}.{% else %}This ticket can't be reopened any more. Please send a new ticket.{% endif %}</p>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      <section class="conversation" id="conversation" aria-label="Conversation">
+        <article class="message">
+          {{ avatar(ticket.customer) }}
+          <div>
+            <p class="message-head"><strong>{{ ticket.customer.name }}</strong> <time datetime="{{ ticket.created_at.isoformat() }}Z">{{ ticket.created_at|nice_datetime }}</time></p>
+            <p class="message-body">{{ ticket.description }}</p>
+            {{ gallery(pictures.get(None)) }}
+          </div>
+        </article>
+        {% for message in messages %}
+          {% set by_staff = message.author and message.author.is_staff %}
+          <article class="message{% if message.is_internal %} message-internal{% elif by_staff %} message-staff{% endif %}" id="m{{ message.id }}">
+            {{ avatar(message.author) }}
+            <div>
+              <p class="message-head">
+                <strong>{{ message.author.name if message.author else 'Someone who left' }}</strong>
+                {% if message.is_internal %}<span class="badge badge-internal">Internal note</span>
+                {% elif by_staff %}<span class="badge">Support team</span>{% endif %}
+                <time datetime="{{ message.created_at.isoformat() }}Z">{{ message.created_at|nice_datetime }}</time>
+              </p>
+              <p class="message-body">{{ message.body }}</p>
+              {{ gallery(pictures.get(message.id)) }}
+            </div>
+          </article>
+        {% endfor %}
+      </section>
+
+      {% if can.can_rate(g.user, ticket) %}
+        <section class="card rate-card" id="rate">
+          <h2 class="card-title">How Did We Do?</h2>
+          <form method="post" action="{{ url_for('tickets.rate', number=ticket.number) }}" class="stack">
+            {{ csrf() }}
+            <fieldset class="stars">
+              <legend class="visually-hidden">Stars</legend>
+              {% for star in range(5, 0, -1) %}
+                <input type="radio" name="stars" value="{{ star }}" id="star-{{ star }}" required>
+                <label for="star-{{ star }}" title="{{ star }} out of 5">{{ icon('star', 28) }}<span class="visually-hidden">{{ star }} out of 5</span></label>
+              {% endfor %}
+            </fieldset>
+            <label class="field"><span class="field-label">Anything to add? <span class="hint">Optional</span></span>
+              <textarea name="comment" rows="2" maxlength="500"></textarea></label>
+            <div class="form-actions"><button class="button" type="submit">Send rating</button></div>
+          </form>
+        </section>
+      {% elif ticket.rating and not staff_view %}
+        <p class="reply-note">You rated our help {{ ticket.rating }} out of 5. Thank you!</p>
+      {% endif %}
+
+      {% if suggested %}
+        <section class="card suggestions-card">
+          <h2 class="card-title">{{ icon('book', 18) }} These Might Help While You Wait</h2>
+          <ul>{% for article in suggested %}<li><a href="{{ url_for('help.show', article_id=article.id) }}">{{ article.title }}</a></li>{% endfor %}</ul>
+        </section>
+      {% endif %}
+
+      {% set can_note = can.can_add_note(g.user, ticket) %}
+      {% if can_reply or can_note %}
+        <section class="card reply-box" id="reply">
+          {% if saved_replies %}
+            {# Without JavaScript, Use reloads the page with the reply filled in. app.js puts it in the box at once. #}
+            <form method="get" action="{{ url_for('tickets.show', number=ticket.number, _anchor='reply') }}" class="saved-pick">
+              <label for="saved-reply" class="field-label">Saved reply</label>
+              <select name="use" id="saved-reply" data-saved-reply>
+                <option value="">Choose one</option>
+                {% for reply, text in saved_replies %}<option value="{{ reply.id }}" data-text="{{ text }}">{{ reply.title }}</option>{% endfor %}
+              </select>
+              <button class="button button-small button-quiet no-js-only" type="submit">Use</button>
+            </form>
+          {% endif %}
+          <form method="post" action="{{ url_for('tickets.reply', number=ticket.number) }}" class="stack" enctype="multipart/form-data">
+            {{ csrf() }}
+            <label class="field">
+              <span class="field-label">{% if not staff_view %}Your reply{% elif can_reply %}Reply to {{ ticket.customer.first_name }}{% else %}Internal note{% endif %}</span>
+              <textarea name="body" rows="5" maxlength="5000" required data-reply-body>{{ draft }}</textarea>
+            </label>
+            {% if can_attach %}
+              <label class="file-line">{{ icon('paperclip', 16) }} <span class="visually-hidden">Pictures</span>
+                <input type="file" name="pictures" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
+                <span class="hint">Up to {{ max_files }} pictures, 5 MB each</span></label>
+            {% endif %}
+            <div class="form-actions">
+              {% if can_note and can_reply %}
+                <label class="check-line note-switch spacer"><input type="checkbox" name="internal" value="1">
+                  Internal note: only the team sees it</label>
+              {% elif can_note %}
+                <input type="hidden" name="internal" value="1">
+                <p class="reply-note spacer">This ticket is {{ ticket.status_name|lower }}. Notes are for the team only.</p>
+              {% endif %}
+              {% if not staff_view and ticket.status == 'resolved' %}<p class="reply-note spacer">Replying reopens the ticket.</p>{% endif %}
+              {% if can_wait and can_reply %}<button class="button button-quiet" type="submit" name="then" value="waiting">Send and wait for customer</button>{% endif %}
+              <button class="button" type="submit">{{ icon('reply', 16) }} {{ 'Send' if can_reply else 'Add note' }}</button>
+            </div>
+          </form>
+        </section>
+      {% endif %}
+      {% if ticket.is_finished and not staff_view %}
+        <p class="reply-note">This ticket is {{ ticket.status_name|lower }}, so it can't have new replies. Need more help? <a href="{{ url_for('tickets.new') }}">Send a new ticket</a>.</p>
+      {% endif %}
+
+      <section class="card" id="history">
+        <h2 class="card-title">History</h2>
+        {{ timeline(history) }}
+      </section>
+    </div>
+
+    <aside class="side-panel">
+      <section class="card">
+        <h2>Details</h2>
+        <dl class="facts">
+          <div><dt>Status</dt><dd>{{ stamp(ticket.status, ticket.status_name) }}</dd></div>
+          <div><dt>Priority</dt><dd>
+            {% if can.can_triage(g.user, ticket) %}
+              <form method="post" action="{{ url_for('tickets.priority', number=ticket.number) }}">
+                {{ csrf() }}{{ version }}
+                <label class="visually-hidden" for="priority">Priority</label>
+                <select name="priority" id="priority" data-auto-submit>
+                  {% for key in priorities %}<option value="{{ key }}"{% if key == ticket.priority %} selected{% endif %}>{{ priority_names[key] }}</option>{% endfor %}
+                </select>
+                <button class="button button-small button-quiet" type="submit" data-auto-submit-button>Save</button>
+              </form>
+            {% else %}{{ priority_tag(ticket.priority, ticket.priority_name) }}{% endif %}
+          </dd></div>
+          <div><dt>Category</dt><dd>
+            {% if can.can_triage(g.user, ticket) %}
+              <form method="post" action="{{ url_for('tickets.category', number=ticket.number) }}">
+                {{ csrf() }}{{ version }}
+                <label class="visually-hidden" for="category">Category</label>
+                <select name="category_id" id="category" data-auto-submit>
+                  <option value="">None</option>
+                  {% for row in categories %}<option value="{{ row.id }}"{% if row.id == ticket.category_id %} selected{% endif %}>{{ row.name }}</option>{% endfor %}
+                </select>
+                <button class="button button-small button-quiet" type="submit" data-auto-submit-button>Save</button>
+              </form>
+            {% else %}{{ ticket.category.name if ticket.category else 'None' }}{% endif %}
+          </dd></div>
+          <div><dt>Assigned To</dt><dd>
+            {% if staff %}
+              <form method="post" action="{{ url_for('tickets.assign', number=ticket.number) }}">
+                {{ csrf() }}{{ version }}
+                <label class="visually-hidden" for="assignee">Assigned to</label>
+                <select name="assignee_id" id="assignee" data-auto-submit>
+                  <option value="">Nobody yet</option>
+                  {% for person in staff %}<option value="{{ person.id }}"{% if person.id == ticket.assignee_id %} selected{% endif %}>{{ person.name }}{% if person.id == g.user.id %} (you){% endif %}</option>{% endfor %}
+                </select>
+                <button class="button button-small button-quiet" type="submit" data-auto-submit-button>Save</button>
+              </form>
+            {% elif ticket.assignee %}
+              <span class="person">{{ avatar(ticket.assignee, 'small') }} <span class="person-text">{{ ticket.assignee.name }}{% if ticket.assignee_id == g.user.id %} (you){% endif %}</span></span>
+            {% else %}<span class="muted">{{ 'Nobody yet' if staff_view else 'Waiting for the next free person' }}</span>{% endif %}
+            {% if can.can_take(g.user, ticket) or can.can_drop(g.user, ticket) %}
+              <div class="fact-actions">
+                {% if can.can_take(g.user, ticket) %}
+                  <form method="post" action="{{ url_for('tickets.take', number=ticket.number) }}">{{ csrf() }}{{ version }}
+                    <button class="button button-small" type="submit">Take it</button></form>
+                {% endif %}
+                {% if can.can_drop(g.user, ticket) %}
+                  <form method="post" action="{{ url_for('tickets.drop', number=ticket.number) }}">{{ csrf() }}{{ version }}
+                    <button class="button button-small button-quiet" type="submit">Hand back</button></form>
+                {% endif %}
+              </div>
+            {% endif %}
+          </dd></div>
+          {% if staff_view %}
+            <div><dt>Customer</dt><dd><span class="person">{{ avatar(ticket.customer, 'small') }} <span class="person-text">{{ ticket.customer.name }}</span></span>
+              <span class="muted small">{{ ticket.customer.email }}</span></dd></div>
+          {% endif %}
+          {% if staff_view and ticket.rating %}
+            <div><dt>Rating</dt><dd><span class="rating" title="{{ ticket.rating }} out of 5">{% for star in range(1, 6) %}<span class="{{ 'on' if star <= ticket.rating else 'off' }}">{{ icon('star', 16) }}</span>{% endfor %}</span>
+              {% if ticket.rating_comment %}<span class="muted small">&ldquo;{{ ticket.rating_comment }}&rdquo;</span>{% endif %}</dd></div>
+          {% endif %}
+          <div><dt>Last Update</dt><dd>{{ ticket.updated_at|ago }}</dd></div>
+        </dl>
+      </section>
+
+      {% if staff_view and (clocks[0] or clocks[1] or ticket.escalated_at) %}
+        <section class="card">
+          <h2>Time Limits</h2>
+          {% if ticket.escalated_at %}
+            <div class="escalation">
+              <p><strong>{{ icon('alarm', 16) }} Escalated {{ ticket.escalated_at|ago }}</strong></p>
+              {% if ticket.escalation_reason %}<p>{{ ticket.escalation_reason }}</p>{% endif %}
+              {% if can.can_clear_escalation(g.user, ticket) %}
+                <form method="post" action="{{ url_for('tickets.clear_escalation', number=ticket.number) }}">
+                  {{ csrf() }}{{ version }}
+                  <button class="button button-small button-quiet" type="submit">Mark as handled</button>
+                </form>
+              {% endif %}
+            </div>
+          {% endif %}
+          <dl class="facts">
+            {% for clock in clocks if clock %}
+              <div><dt>{{ 'First Reply' if clock.kind == 'response' else 'Solved' }}</dt>
+                <dd>{{ clock_tag(clock) }}<span class="muted small">{{ 'Was due' if clock.state in ('met', 'missed') else 'Due' }} {{ clock.due|nice_datetime }}</span></dd></div>
+            {% endfor %}
+          </dl>
+          {% if can.can_escalate(g.user, ticket) %}
+            <details class="resolve-form section-gap">
+              <summary class="button button-quiet button-wide">{{ icon('alarm', 16) }} Ask a Team Lead</summary>
+              <form method="post" action="{{ url_for('tickets.escalate', number=ticket.number) }}" class="stack-tight">
+                {{ csrf() }}{{ version }}
+                <label class="field"><span class="field-label">What help do you need?</span>
+                  <textarea name="reason" rows="3" maxlength="300" required></textarea></label>
+                <button class="button" type="submit">Escalate</button>
+              </form>
+            </details>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      {% set can_merge = can.can_merge(g.user, ticket) %}
+      {% if moves or can_resolve or can_merge %}
+        <section class="card">
+          <h2>{{ 'Move Ticket' if staff_view else 'Your Ticket' }}</h2>
+          <div class="moves">
+            {% if can_resolve %}
+              <details class="resolve-form"{% if request.args.get('resolve') %} open{% endif %}>
+                <summary class="button button-positive">{{ icon('check', 16) }} Resolve</summary>
+                <form method="post" action="{{ url_for('tickets.move', number=ticket.number) }}" class="stack-tight">
+                  {{ csrf() }}{{ version }}
+                  <input type="hidden" name="to" value="resolved">
+                  <label class="field"><span class="field-label">How was it solved?</span>
+                    <textarea name="resolution" rows="4" maxlength="2000" required></textarea></label>
+                  <button class="button button-positive" type="submit">Mark as resolved</button>
+                </form>
+              </details>
+            {% endif %}
+            {% for to, label in moves %}
+              <form method="post" action="{{ url_for('tickets.move', number=ticket.number) }}"
+                    {% if to == 'cancelled' %}data-confirm="Cancel {{ ticket.key }}? It can't be opened again."{% endif %}>
+                {{ csrf() }}{{ version }}
+                <input type="hidden" name="to" value="{{ to }}">
+                <button class="button {{ 'button-danger' if to == 'cancelled' else 'button-quiet' }}" type="submit">{{ label }}</button>
+              </form>
+            {% endfor %}
+            {% if can_merge %}
+              <details class="resolve-form">
+                <summary class="button button-quiet button-wide">{{ icon('merge', 16) }} Merge into another ticket</summary>
+                <form method="post" action="{{ url_for('tickets.merge', number=ticket.number) }}" class="stack-tight"
+                      data-confirm="Merge {{ ticket.key }} into the other ticket? {{ ticket.key }} will be closed.">
+                  {{ csrf() }}{{ version }}
+                  <label class="field"><span class="field-label">The ticket to keep <span class="hint">Same customer</span></span>
+                    <input type="text" name="into" placeholder="TT-12" required></label>
+                  <button class="button" type="submit">Merge</button>
+                </form>
+              </details>
+            {% endif %}
+          </div>
+        </section>
+      {% endif %}
+    </aside>
+  </div>
+{% endblock %}

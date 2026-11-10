@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_tickets.html" import ticket_card %}
+{% from "_icons.html" import icon %}
+{% block title %}Home - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head greeting">
+    <div>
+      <h1>Hello, {{ g.user.first_name }}</h1>
+      <p class="lead">{{ g.user.role_name }} at {{ g.desk.name }}.</p>
+    </div>
+    <div class="head-actions">
+      <a class="button" href="{{ url_for('tickets.queue') }}">{{ icon('queue') }} Open the queue</a>
+    </div>
+  </div>
+
+  <div class="stat-tiles">
+    <a class="stat{% if counts.unassigned %} stat-warn{% endif %}" href="{{ url_for('tickets.queue', tab='unassigned') }}">
+      <span class="stat-value">{{ counts.unassigned }}</span><span class="stat-label">Unassigned</span>
+      <span class="stat-sub">Waiting for someone to take them</span></a>
+    <a class="stat" href="{{ url_for('tickets.queue', tab='mine') }}">
+      <span class="stat-value">{{ counts.mine }}</span><span class="stat-label">Mine</span>
+      <span class="stat-sub">Open tickets you have</span></a>
+    <a class="stat{% if counts.overdue %} stat-bad{% endif %}" href="{{ url_for('tickets.queue', tab='overdue') }}">
+      <span class="stat-value">{{ counts.overdue }}</span><span class="stat-label">Overdue</span>
+      <span class="stat-sub">Late or escalated</span></a>
+    <a class="stat" href="{{ url_for('tickets.queue', tab='waiting') }}">
+      <span class="stat-value">{{ counts.waiting }}</span><span class="stat-label">Waiting on Customers</span>
+      <span class="stat-sub">They owe us an answer</span></a>
+    <a class="stat stat-good" href="{{ url_for('tickets.queue', tab='resolved') }}">
+      <span class="stat-value">{{ resolved_today }}</span><span class="stat-label">Resolved Today</span>
+      <span class="stat-sub">Since midnight</span></a>
+  </div>
+
+  <section>
+    <div class="section-head"><h2>Your Tickets</h2>
+      {% if counts.mine > mine|length %}<a href="{{ url_for('tickets.queue', tab='mine') }}">All {{ counts.mine }}</a>{% endif %}</div>
+    {% if mine %}
+      <ul class="ticket-list">{% for ticket in mine %}{{ ticket_card(ticket, clock=sla_ctx.headline(ticket)) }}{% endfor %}</ul>
+    {% else %}
+      <div class="empty-state">
+        {{ icon('empty', 48) }}
+        <h2>Nothing on Your Plate</h2>
+        <p>Take a ticket from the queue to get started.</p>
+        <a class="button" href="{{ url_for('tickets.queue', tab='unassigned') }}">See unassigned tickets</a>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

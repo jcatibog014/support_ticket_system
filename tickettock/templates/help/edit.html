@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, textarea %}
+{% block title %}{{ 'Edit Article' if article.id else 'New Article' }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>{{ 'Edit Article' if article.id else 'New Article' }}</h1>
+      <p class="lead">Write in Markdown: **bold**, # a heading, - a list, [a link](https://example.com).</p>
+    </div>
+  </div>
+  <div class="card new-ticket">
+    <form method="post" class="stack">
+      {{ csrf() }}
+      {{ field('title', 'Title', article.title, errors.title, hint='Say it the way a customer would ask', attrs='required maxlength="120"') }}
+      <label class="field">
+        <span class="field-label">Category <span class="hint">Optional</span></span>
+        <select name="category_id">
+          <option value="">General</option>
+          {% for category in categories %}<option value="{{ category.id }}"{% if category.id == article.category_id %} selected{% endif %}>{{ category.name }}</option>{% endfor %}
+        </select>
+      </label>
+      {{ textarea('body', 'Article', article.body, errors.body, rows=14, attrs='required maxlength="20000"') }}
+      <label class="check-line"><input type="checkbox" name="publish" value="1"{% if article.is_published %} checked{% endif %}>
+        Published: customers can read it (leave it off for a draft)</label>
+      <div class="form-actions">
+        {% if article.id %}
+          <button class="button button-danger spacer" type="submit" name="action" value="delete" formnovalidate
+                  data-confirm-button="Delete this article? It can't be brought back.">Delete</button>
+          <a class="button button-quiet" href="{{ url_for('help.show', article_id=article.id) }}">Cancel</a>
+        {% else %}
+          <a class="button button-quiet" href="{{ url_for('help.index') }}">Cancel</a>
+        {% endif %}
+        <button class="button" type="submit">Save article</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ article.title }} - {{ APP_NAME }}{% endblock %}
+{% block body_class %}{% if not g.user %}public-layout{% endif %}{% endblock %}
+{% block content %}
+  {% if not g.user %}{% include "_public_top.html" %}{% endif %}
+  <a class="back-link" href="{{ url_for('help.index') }}">{{ icon('back', 16) }} Help Articles</a>
+  <article class="card help-article">
+    <header class="help-head">
+      <p class="kicker">{{ article.category.name if article.category else 'General' }}{% if not article.is_published %} &middot; Draft: only the team sees it{% endif %}</p>
+      <h1>{{ article.title }}</h1>
+      <p class="muted small">Updated {{ article.updated_at|nice_date }}{% if g.user and g.user.is_staff %} &middot; {{ plural(article.views, 'view') }} &middot;
+        {{ helpful }} found it helpful, {{ not_helpful }} didn't{% endif %}</p>
+    </header>
+    <div class="prose">{{ article.body|markdown }}</div>
+    <footer class="help-foot">
+      {% if g.user and can.can_vote_article(g.user, article) %}
+        <form method="post" action="{{ url_for('help.vote', article_id=article.id) }}" class="helpful">
+          {{ csrf() }}
+          <span>Was this helpful?</span>
+          <button class="button button-small {{ 'button-positive' if my_vote == true else 'button-quiet' }}" type="submit" name="helpful" value="1">Yes</button>
+          <button class="button button-small {{ 'button' if my_vote == false else 'button-quiet' }}" type="submit" name="helpful" value="0">No</button>
+        </form>
+      {% endif %}
+      <p class="muted">Still stuck? <a href="{{ url_for('tickets.new') }}">Send us a ticket</a>.</p>
+      {% if can.can_manage_articles(g.user) %}
+        <a class="button button-quiet" href="{{ url_for('help.edit', article_id=article.id) }}">{{ icon('pencil', 16) }} Edit article</a>
+      {% endif %}
+    </footer>
+  </article>
+{% endblock %}

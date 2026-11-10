@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_tickets.html" import ticket_card %}
+{% from "_icons.html" import icon %}
+{% block title %}My Tickets - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>My Tickets</h1>
+      <p class="lead">Hello, {{ g.user.first_name }}. Here is everything you sent us.</p>
+    </div>
+    <div class="head-actions">
+      <a class="button" href="{{ url_for('tickets.new') }}">{{ icon('plus') }} New ticket</a>
+    </div>
+  </div>
+
+  {% if not still_open and not finished %}
+    <div class="empty-state">
+      {{ icon('empty', 48) }}
+      <h2>No Tickets Yet</h2>
+      <p>When something goes wrong, send us a ticket. We'll answer here.</p>
+      <a class="button" href="{{ url_for('tickets.new') }}">Send your first ticket</a>
+    </div>
+  {% else %}
+    <section>
+      <div class="section-head"><h2>Open</h2><span class="muted small">{{ plural(still_open|length, 'ticket') }}</span></div>
+      {% if still_open %}
+        <ul class="ticket-list">{% for ticket in still_open %}{{ ticket_card(ticket, staff_view=False) }}{% endfor %}</ul>
+      {% else %}
+        <p class="empty-line">Nothing open. Everything you sent has been solved.</p>
+      {% endif %}
+    </section>
+    {% if finished %}
+      <section class="section">
+        <div class="section-head"><h2>Closed</h2><span class="muted small">{{ plural(finished|length, 'ticket') }}</span></div>
+        <ul class="ticket-list">{% for ticket in finished %}{{ ticket_card(ticket, staff_view=False) }}{% endfor %}</ul>
+      </section>
+    {% endif %}
+  {% endif %}
+{% endblock %}

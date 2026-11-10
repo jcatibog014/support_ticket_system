@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Insights - {{ APP_NAME }}{% endblock %}
+{#
+  The charts are plain SVG. Every bar and point has a <title> (the browser shows it
+  on hover) and its number or a label beside it, and every chart opens as a table.
+  One colour per chart, except Sent and Solved: blue and orange, checked with the
+  dataviz validator for light and dark and for colour-blind readers.
+#}
+
+{# A horizontal bar chart. rows: [(label, value, text beside the bar, hover text)]. #}
+{% macro bars(id, summary, rows, head_label, head_value) %}
+  {% set most = rows|map(attribute=1)|select|max or 1 %}
+  {% set row = 34 %}
+  <svg class="chart" viewBox="0 0 600 {{ rows|length * row }}" role="img" aria-labelledby="{{ id }}-title">
+    <title id="{{ id }}-title">{{ summary }}</title>
+    {% for label, value, text, hover in rows %}
+      {% set y = loop.index0 * row + 5 %}
+      {% set width = 320 * (value or 0) / most %}
+      <g>
+        <title>{{ hover }}</title>
+        <rect class="hit" x="0" y="{{ y - 5 }}" width="600" height="{{ row }}"></rect>
+        <text x="0" y="{{ y + 16 }}">{{ label }}</text>
+        <rect class="track" x="170" y="{{ y }}" width="320" height="22" rx="4"></rect>
+        {% if value %}<path class="bar-series" d="{{ bar_path(170, y, width, 22) }}"></path>{% endif %}
+        <text class="value-text" x="{{ 170 + width + 8 if value else 178 }}" y="{{ y + 16 }}">{{ text }}</text>
+      </g>
+    {% endfor %}
+  </svg>
+  <details class="chart-table">
+    <summary>Show as a table</summary>
+    <table class="table"><thead><tr><th>{{ head_label }}</th><th>{{ head_value }}</th></tr></thead>
+      <tbody>{% for label, value, text, hover in rows %}<tr><td>{{ label }}</td><td>{{ text }}</td></tr>{% endfor %}</tbody></table>
+  </details>
+{% endmacro %}
+
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Insights</h1>
+      <p class="lead">How the desk is doing. Times are working time, like the time limits.</p>
+    </div>
+    <nav class="segmented" aria-label="Period">
+      {% for value, name in periods.items() %}
+        <a href="{{ url_for('insights.index', days=value) }}"{% if value == days %} aria-current="page"{% endif %}>{{ name }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <div class="stat-tiles">
+    <div class="stat"><span class="stat-value">{{ statuses|map(attribute=2)|sum }}</span><span class="stat-label">Open Now</span>
+      <span class="stat-sub">Someone still has work to do</span></div>
+    <div class="stat"><span class="stat-value">{{ sent }}</span><span class="stat-label">Sent</span>
+      <span class="stat-sub">New tickets, {{ periods[days]|lower }}</span></div>
+    <div class="stat stat-good"><span class="stat-value">{{ solved }}</span><span class="stat-label">Solved</span>
+      <span class="stat-sub">Resolved, {{ periods[days]|lower }}</span></div>
+    {% for rate, name in ((reply_rate, 'First Reply in Time'), (solved_rate, 'Solved in Time')) %}
+      <div class="stat{% if rate.percent is not none %}{{ ' stat-good' if rate.percent >= 90 else ' stat-warn' if rate.percent >= 75 else ' stat-bad' }}{% endif %}">
+        <span class="stat-value{% if rate.percent is none %} stat-none{% endif %}">{{ rate.percent ~ '%' if rate.percent is not none else 'None yet' }}</span>
+        <span class="stat-label">{{ name }}</span>
+        <span class="stat-sub">{{ rate.met }} of {{ rate.total }} within the time limit</span></div>
+    {% endfor %}
+    <div class="stat"><span class="stat-value{% if not average %} stat-none{% endif %}">{% if average %}{{ average }}<span class="stat-unit"> / 5</span>{% else %}None yet{% endif %}</span>
+      <span class="stat-label">Customer Rating</span><span class="stat-sub">{{ plural(rated, 'rating') }}</span></div>
+  </div>
+
+  <div class="dash-grid">
+    {# ---------- Sent and solved ---------- #}
+    <section class="card chart-card chart-wide">
+      <h2>Sent and Solved</h2>
+      <p class="lead">New tickets and resolved tickets {{ 'each week' if step == 7 else 'each day' }}. When orange stays under blue, the queue grows.</p>
+      {% set top = nice_max(([trend|map(attribute=2)|max, trend|map(attribute=3)|max]|max) or 1) %}
+      {% set sent_line, sent_points = line_points(trend|map(attribute=2)|list, 900, 160, 20, top) %}
+      {% set solved_line, solved_points = line_points(trend|map(attribute=3)|list, 900, 160, 20, top) %}
+      {% set slot = 900 / ((trend|length - 1) or 1) %}
+      <ul class="legend" aria-hidden="true">
+        <li><span class="key key-sent"></span> Sent</li>
+        <li><span class="key key-solved"></span> Solved</li>
+      </ul>
+      <svg class="chart" viewBox="-36 0 1050 214" role="img" aria-labelledby="trend-title">
+        <title id="trend-title">Sent and solved {{ 'per week' if step == 7 else 'per day' }}: {% for label, start, sent_n, solved_n in trend %}{{ label }} {{ sent_n }} sent, {{ solved_n }} solved{% if not loop.last %}; {% endif %}{% endfor %}</title>
+        {% for tick in ((0, top // 2, top) if top % 2 == 0 else (0, top)) %}
+          {% set y = 180 - 160 * tick / top %}
+          <line class="gridline" x1="0" y1="{{ y }}" x2="900" y2="{{ y }}"></line>
+          <text x="-10" y="{{ y + 5 }}" text-anchor="end">{{ tick }}</text>
+        {% endfor %}
+        <polyline class="line line-sent" points="{{ sent_line }}"></polyline>
+        <polyline class="line line-solved" points="{{ solved_line }}"></polyline>
+        {% for label, start, sent_n, solved_n in trend %}
+          {% set i = loop.index0 %}
+          <g class="point">
+            <title>{{ 'Week of ' if step == 7 }}{{ label }}: {{ sent_n }} sent, {{ solved_n }} solved</title>
+            <rect class="hit" x="{{ sent_points[i][0] - slot / 2 }}" y="0" width="{{ slot }}" height="190"></rect>
+            <line class="crosshair" x1="{{ sent_points[i][0] }}" y1="20" x2="{{ sent_points[i][0] }}" y2="180"></line>
+            <circle class="dot dot-sent" cx="{{ sent_points[i][0] }}" cy="{{ sent_points[i][1] }}" r="4"></circle>
+            <circle class="dot dot-solved" cx="{{ solved_points[i][0] }}" cy="{{ solved_points[i][1] }}" r="4"></circle>
+          </g>
+          {% if loop.first or loop.last or i == (trend|length // 2) %}
+            <text x="{{ sent_points[i][0] }}" y="204" text-anchor="{{ 'start' if loop.first else 'end' if loop.last else 'middle' }}">{{ label }}</text>
+          {% endif %}
+        {% endfor %}
+        {# Direct labels at the right end of each line. #}
+        {% set last = trend|length - 1 %}
+        {% set gap = 0 if (sent_points[last][1] - solved_points[last][1])|abs > 14 else 8 %}
+        <text class="value-text" x="910" y="{{ sent_points[last][1] + 4 - gap }}">Sent {{ trend[last][2] }}</text>
+        <text class="value-text" x="910" y="{{ solved_points[last][1] + 4 + gap }}">Solved {{ trend[last][3] }}</text>
+      </svg>
+      <details class="chart-table">
+        <summary>Show as a table</summary>
+        <table class="table"><thead><tr><th>{{ 'Week of' if step == 7 else 'Day' }}</th><th class="num">Sent</th><th class="num">Solved</th></tr></thead>
+          <tbody>{% for label, start, sent_n, solved_n in trend %}<tr><td>{{ start|nice_date }}</td><td class="num">{{ sent_n }}</td><td class="num">{{ solved_n }}</td></tr>{% endfor %}</tbody></table>
+      </details>
+    </section>
+
+    {# ---------- Open by status ---------- #}
+    <section class="card chart-card">
+      <h2>Open Tickets by Status</h2>
+      <p class="lead">Where the open tickets are right now.</p>
+      {% set rows = [] %}
+      {% for status, name, count in statuses %}{% set _ = rows.append((name, count, count, name ~ ': ' ~ plural(count, 'ticket'))) %}{% endfor %}
+      {{ bars('status-chart', 'Open tickets by status', rows, 'Status', 'Tickets') }}
+    </section>
+
+    {# ---------- Team ---------- #}
+    <section class="card chart-card">
+      <h2>Team Load</h2>
+      <p class="lead">Open tickets each person has now. The table also shows what they solved.</p>
+      {% set rows = [] %}
+      {% for person, open_now, solved_n, rating in team %}{% set _ = rows.append((person.name, open_now, open_now, person.name ~ ': ' ~ open_now ~ ' open, ' ~ solved_n ~ ' solved')) %}{% endfor %}
+      {% if team %}
+        {{ bars('team-chart', 'Open tickets per person', rows, 'Person', 'Open now') }}
+        <table class="table team-table section-gap">
+          <thead><tr><th>Person</th><th class="num">Open Now</th><th class="num">Solved</th><th class="num">Rating</th></tr></thead>
+          <tbody>{% for person, open_now, solved_n, rating in team %}
+            <tr><td>{{ person.name }} <span class="muted small">{{ person.role_name }}</span></td><td class="num">{{ open_now }}</td><td class="num">{{ solved_n }}</td><td class="num">{{ rating or '' }}</td></tr>
+          {% endfor %}</tbody>
+        </table>
+      {% else %}<p class="empty-line">No staff yet.</p>{% endif %}
+    </section>
+
+    {# ---------- Times ---------- #}
+    <section class="card chart-card">
+      <h2>Time to First Reply</h2>
+      <p class="lead">The middle (median) working time from sent to the team's first reply, by priority.</p>
+      {{ bars('reply-chart', 'Median time to first reply by priority', reply_rows, 'Priority', 'Median') }}
+    </section>
+    <section class="card chart-card">
+      <h2>Time to Solve</h2>
+      <p class="lead">The median working time from sent to resolved, by priority. Time waiting on the customer doesn't count.</p>
+      {{ bars('solve-chart', 'Median time to solve by priority', solve_rows, 'Priority', 'Median') }}
+    </section>
+
+    {# ---------- Ratings ---------- #}
+    <section class="card chart-card">
+      <h2>Customer Ratings</h2>
+      <p class="lead">How customers rated the help after their ticket was solved.</p>
+      {% set rows = [] %}
+      {% for star, count in stars %}{% set _ = rows.append((star ~ (' star' if star == 1 else ' stars'), count, count, star ~ ' out of 5: ' ~ plural(count, 'rating'))) %}{% endfor %}
+      {{ bars('rating-chart', 'Ratings from 5 stars to 1 star', rows, 'Rating', 'How many') }}
+    </section>
+  </div>
+{% endblock %}

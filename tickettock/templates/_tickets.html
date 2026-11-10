@@ -1,0 +1,45 @@
+{# Ticket pieces used by many pages: the status stamp, the priority arrow, and the ticket stub card. #}
+{% from "_icons.html" import icon %}
+{% from "_macros.html" import avatar %}
+
+{% macro stamp(status, name, big=False) %}<span class="stamp status-{{ status }}{% if big %} stamp-big{% endif %}">{{ name }}</span>{% endmacro %}
+
+{% macro priority(ticket_priority, name) %}
+  <span class="priority priority-{{ ticket_priority }}" title="Priority: {{ name }}">{{ icon('priority-' ~ ticket_priority, 16) }} {{ name }}</span>
+{% endmacro %}
+
+{# An SLA clock (sla.Clock) as a small line: "First reply due in 45 min". #}
+{% macro clock_tag(clock) %}
+  {% if clock %}<span class="sla sla-{{ clock.state }}" title="Due {{ clock.due|nice_datetime }}">{{ icon('clock', 14) }} {{ clock.label }}</span>{% endif %}
+{% endmacro %}
+
+{# One ticket as a stub card: the details on the left, a dashed tear line, then the stub with the status. #}
+{% macro ticket_card(ticket, staff_view=True, clock=None, pick=False) %}
+  <li class="ticket-stub status-{{ ticket.status }}{% if pick %} has-pick{% endif %}">
+    {% if pick %}
+      {# Belongs to the bulk form above the list (form="bulk"), and sits over the card's link. #}
+      <label class="stub-pick"><input type="checkbox" name="ticket" value="{{ ticket.number }}" form="bulk" data-bulk-pick>
+        <span class="visually-hidden">Choose {{ ticket.key }}</span></label>
+    {% endif %}
+    <div class="stub-main">
+      <p class="stub-top"><span class="ticket-key">{{ ticket.key }}</span>
+        {% if ticket.category %}<span class="stub-category">{{ ticket.category.name }}</span>{% endif %}</p>
+      <a class="stub-title" href="{{ url_for('tickets.show', number=ticket.number) }}">{{ ticket.subject }}</a>
+      <p class="stub-sub">
+        {% if staff_view %}<span>{{ ticket.customer.name }}</span> &middot; {% endif %}
+        <span>Sent {{ ticket.created_at|ago }}</span>
+        {% if ticket.updated_at != ticket.created_at %} &middot; <span>Updated {{ ticket.updated_at|ago }}</span>{% endif %}
+      </p>
+      {% if staff_view and (clock or ticket.escalated_at) %}
+        <p class="stub-clock">{{ clock_tag(clock) }}{% if ticket.escalated_at %}<span class="sla sla-late">{{ icon('alarm', 14) }} Escalated</span>{% endif %}</p>
+      {% endif %}
+    </div>
+    <div class="stub-side">
+      {{ stamp(ticket.status, ticket.status_name) }}
+      <div class="stub-meta">
+        {{ priority(ticket.priority, ticket.priority_name) }}
+        {% if staff_view %}{{ avatar(ticket.assignee, 'small') }}{% endif %}
+      </div>
+    </div>
+  </li>
+{% endmacro %}

@@ -1,0 +1,6 @@
+{# One article in a list. #}
+<li class="article-row">
+  <a href="{{ url_for('help.show', article_id=article.id) }}">{{ article.title }}</a>
+  {% if not article.is_published %}<span class="badge badge-off">Draft</span>{% endif %}
+  <span class="article-snippet">{{ article.body|striptags|replace('#', '')|replace('*', '')|truncate(140) }}</span>
+</li>
