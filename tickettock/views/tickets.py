@@ -7,7 +7,7 @@ ticket changed since, the change is refused and the page shows the new state.
 """
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
-from .. import db, desks, tickets, workflow
+from .. import audit, db, desks, tickets, workflow
 from .. import permissions as can
 from ..auth import login_required, require
 from ..dates import utcnow
@@ -136,7 +136,8 @@ def show(number):
         reopen_until=ticket.resolved_at + can.REOPEN_WINDOW if ticket.resolved_at else None,
         staff=tickets.staff_on(s, g.desk) if can.can_assign(g.user, ticket) else [],
         categories=tickets.category_choices(s, g.desk, ticket.category_id),
-        priorities=PRIORITIES, priority_names=PRIORITY_NAMES, status_names=STATUS_NAMES)
+        priorities=PRIORITIES, priority_names=PRIORITY_NAMES, status_names=STATUS_NAMES,
+        history=audit.for_ticket(s, ticket, can.is_staff(g.user)))
 
 
 @bp.post("/tickets/<int:number>/reply")
@@ -144,16 +145,20 @@ def show(number):
 def reply(number):
     s, ticket = _load(number)
     now = utcnow()
-    require(can.can_reply(g.user, ticket, now), "This ticket is closed, so it can't have new replies.")
+    internal = request.form.get("internal") == "1"
+    if internal:
+        require(can.can_add_note(g.user, ticket), "Internal notes are for the support team.")
+    else:
+        require(can.can_reply(g.user, ticket, now), "This ticket is closed, so it can't have new replies.")
     body = request.form.get("body", "").strip()
     if not body:
         flash("Write something first.", "error")
         return _back(ticket, "reply")
     if len(body) > tickets.BODY_MAX:
         abort(400, f"Keep a reply under {tickets.BODY_MAX} characters.")
-    then_wait = request.form.get("then") == "waiting"
+    then_wait = request.form.get("then") == "waiting" and not internal
     try:
-        tickets.reply(s, ticket, g.user, body, now)
+        tickets.reply(s, ticket, g.user, body, now, internal=internal)
         if then_wait and can.can_move(g.user, ticket, WAITING, now) and not workflow.move_problem(ticket, WAITING):
             workflow.move(s, ticket, WAITING, g.user, now)
         s.commit()
@@ -161,7 +166,8 @@ def reply(number):
         s.rollback()
         flash(error.message, "error")
         return _back(ticket)
-    flash("Reply sent. The ticket now waits for the customer." if then_wait else "Reply sent.")
+    flash("Note added. Only the team can see it." if internal
+          else "Reply sent. The ticket now waits for the customer." if then_wait else "Reply sent.")
     return _back(ticket, "conversation")
 
 

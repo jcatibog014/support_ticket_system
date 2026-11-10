@@ -5,7 +5,8 @@
       ├──< categories           ("Billing", "Login and account", ...)
       ├──< tickets ── customer_id, assignee_id ──> users
       │      └──< messages      (the conversation: the customer's and the team's replies)
-      └──< audit_events         (the history: append-only, each row chained to the one before)
+      ├──< audit_events         (the history: append-only, each row chained to the one before)
+      └──< notifications ── user_id ──> users   (someone's Inbox, and the emails it sends)
 
 There is one real desk (made by "flask create-admin"). Every Try Demo makes
 its own small desk, so a visitor's changes never reach the real one. Every row
@@ -95,6 +96,8 @@ class User(Base):
     locked_until: Mapped[datetime | None] = mapped_column(DateTime)
     # A staff member who left is switched off, never deleted: their name stays on the history.
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Also send Inbox notices by email (Settings). Only when the site has email set up.
+    email_updates: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     desk: Mapped[Desk] = relationship()
@@ -271,3 +274,31 @@ class AuditEvent(Base):
 
     ticket: Mapped[Ticket | None] = relationship()
     actor: Mapped[User | None] = relationship()
+
+
+# What an Inbox notice is about (notify.py writes them, inbox.html turns them into words).
+NOTICE_KINDS = ("reply", "note", "assigned", "status", "escalated", "rated", "merged")
+
+
+class Notification(Base):
+    """One line in someone's Inbox. It doubles as an email OUTBOX: written in the
+    same transaction as the change it is about, so a change that rolls back sends
+    nothing; notify.deliver() emails it after the commit."""
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    desk_id: Mapped[int] = mapped_column(ForeignKey("desks.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    ticket_id: Mapped[int | None] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(12))
+    actor_name: Mapped[str] = mapped_column(String(80), default="")
+    # A little more: the new status, or the first words of a reply.
+    detail: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # The email: "" (none), "waiting", "sent" or "failed" (after 3 tries).
+    email_status: Mapped[str] = mapped_column(String(8), default="")
+    email_tries: Mapped[int] = mapped_column(Integer, default=0)
+
+    user: Mapped[User] = relationship()
+    ticket: Mapped[Ticket | None] = relationship()

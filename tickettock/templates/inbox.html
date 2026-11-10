@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% from "_icons.html" import icon %}
+{% block title %}Inbox - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Inbox</h1>
+      <p class="lead">What happened to {{ 'your tickets' if g.user.is_staff else 'the tickets you sent' }}.</p>
+    </div>
+    {% if notices and unread_count() %}
+      <form method="post" action="{{ url_for('inbox.mark_all') }}" class="head-actions">
+        {{ csrf() }}
+        <button class="button button-quiet" type="submit">{{ icon('check', 16) }} Mark all as read</button>
+      </form>
+    {% endif %}
+  </div>
+
+  <nav class="tabs" aria-label="Inbox filter">
+    {% for key, title in filters.items() %}
+      <a href="{{ url_for('inbox.index', show=key) }}"{% if key == show %} aria-current="page"{% endif %}>{{ title }}
+        {% if key == 'unread' and unread_count() %}<span class="tab-count">{{ unread_count() }}</span>{% endif %}</a>
+    {% endfor %}
+  </nav>
+
+  {% if notices %}
+    <ul class="inbox">
+      {% for notice in notices %}
+        {% set subject, line = words(notice) %}
+        <li class="notice{% if not notice.read_at %} is-unread{% endif %}">
+          <span class="notice-icon" aria-hidden="true">{{ icon({'reply': 'reply', 'note': 'note', 'assigned': 'person', 'status': 'ticket', 'escalated': 'alarm', 'rated': 'star', 'merged': 'merge'}.get(notice.kind, 'inbox')) }}</span>
+          <div class="notice-text">
+            <form method="post" action="{{ url_for('inbox.open_notice', notice_id=notice.id) }}">
+              {{ csrf() }}
+              <button class="notice-link" type="submit">
+                {% if notice.ticket %}<span class="ticket-key">{{ notice.ticket.key }}</span> {{ notice.ticket.subject }}{% else %}Notice{% endif %}
+                {% if not notice.read_at %}<span class="visually-hidden"> (unread)</span>{% endif %}</button>
+            </form>
+            <p class="notice-line">{{ line }}</p>
+          </div>
+          <time datetime="{{ notice.created_at.isoformat() }}Z" title="{{ notice.created_at|nice_datetime }}">{{ notice.created_at|ago }}</time>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty-state">
+      {{ icon('inbox', 48) }}
+      <h2>{{ 'All Caught Up' if show == 'unread' else 'Nothing Yet' }}</h2>
+      <p>{{ 'You have read everything.' if show == 'unread' else 'When something happens to your tickets, you will see it here.' }}</p>
+    </div>
+  {% endif %}
+{% endblock %}

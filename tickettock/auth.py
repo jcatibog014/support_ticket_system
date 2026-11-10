@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from . import db, desks, invites, permissions
+from . import audit, db, desks, invites, mailer, permissions
 from .dates import utcnow
 from .models import ADMIN, CUSTOMER, Desk, User
 
@@ -348,6 +348,7 @@ def join(token):
                 if not invites.claim(s, invite, user, now):
                     s.rollback()
                     return render_template("join.html", invite=None, errors={}, name="", email=""), 404, headers
+                audit.log(s, desk.id, user, audit.JOINED, now, field="role", new=user.role, note=user.email)
                 code = new_recovery_code(user)
                 s.commit()
             except IntegrityError:
@@ -426,6 +427,12 @@ def settings():
                 s.commit()
                 flash("Your name has been changed.")
                 return redirect(url_for("auth.settings"))
+        elif action == "emails":
+            g.user.email_updates = request.form.get("email_updates") == "1"
+            s.commit()
+            flash("We'll email you about your tickets." if g.user.email_updates
+                  else "No more emails. Everything still comes to your Inbox.")
+            return redirect(url_for("auth.settings"))
         elif action in ("password", "recovery"):
             if not check_password_hash(g.user.password_hash, request.form.get("current_password", "")):
                 errors[f"{action}_current"] = "That isn't your current password."
@@ -445,7 +452,7 @@ def settings():
                 show_recovery_code(new_recovery_code(g.user))
                 s.commit()
                 return redirect(url_for("auth.recovery_code"))
-    return render_template("settings.html", errors=errors), 400 if errors else 200
+    return render_template("settings.html", errors=errors, mail_on=mailer.enabled()), 400 if errors else 200
 
 
 # ---------- Command line ----------

@@ -141,3 +141,20 @@ def can_move(user, ticket, to, now=None):
     # Agents work their own tickets. Closing and cancelling are for Team Leads
     # (the customer closes their own ticket by saying it's fixed).
     return is_staff(user) and _mine(user, ticket) and to in (OPEN, IN_PROGRESS, WAITING, RESOLVED)
+
+
+def can_add_note(user, ticket):
+    """Internal notes: the team talking among themselves, on any ticket, even a closed one."""
+    return is_staff(user) and can_view_ticket(user, ticket)
+
+
+# ---------- The history ----------
+
+def can_view_audit_log(user):
+    """The whole desk's history: Team Leads and Admins. (Everyone sees their own ticket's timeline.)"""
+    return is_lead(user)
+
+
+def can_export_audit_log(user):
+    """Download it as a CSV file: Admins only, since it holds every customer's email."""
+    return is_admin(user)

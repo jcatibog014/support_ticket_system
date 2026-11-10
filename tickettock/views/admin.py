@@ -7,7 +7,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from .. import db, desks, invites
+from .. import audit, db, desks, invites
 from .. import permissions as can
 from ..auth import login_required, not_for_demo, require
 from ..dates import utcnow
@@ -54,7 +54,9 @@ def invite():
     if role not in can.roles_you_can_give(g.user):
         abort(400, "Choose a role from the list.")
     s = db.session()
-    token = invites.create(s, g.desk, role, g.user, utcnow())
+    now = utcnow()
+    token = invites.create(s, g.desk, role, g.user, now)
+    audit.log(s, g.desk.id, g.user, audit.INVITE_MADE, now, field="role", new=role)
     s.commit()
     flash(f"Made an invite link for {A_ROLE[role]}. Copy it now: it is shown only once.")
     return redirect(url_for("admin.staff", link=url_for("auth.join", token=token, _external=True)))
@@ -66,6 +68,7 @@ def cancel_invite(invite_id):
     require(can.can_manage_staff(g.user), "Only an Admin can cancel invite links.")
     s = db.session()
     invite_row = desks.get_in_desk(s, Invite, invite_id, g.desk)
+    audit.log(s, g.desk.id, g.user, audit.INVITE_CANCELLED, utcnow(), field="role", old=invite_row.role)
     invites.cancel(s, invite_row)
     s.commit()
     flash("The invite link no longer works.")
@@ -82,6 +85,8 @@ def change_role(user_id):
     if role not in can.roles_you_can_give(g.user):
         abort(400, "Choose a role from the list.")
     if role != person.role:
+        audit.log(s, g.desk.id, g.user, audit.ROLE_CHANGED, utcnow(), field="role", old=person.role, new=role,
+                  note=f"{person.name} ({person.email})")
         person.role = role
         person.session_version += 1  # their open pages reload with the new role's menus
         s.commit()
@@ -95,7 +100,11 @@ def switch(user_id):
     s = db.session()
     person = _person(s, user_id)
     require(can.can_switch_off(g.user, person), "You can't switch this account off.")
-    person.is_active = request.form.get("active") == "1"
+    active = request.form.get("active") == "1"
+    if active != person.is_active:
+        audit.log(s, g.desk.id, g.user, audit.SWITCHED_ON if active else audit.SWITCHED_OFF, utcnow(),
+                  note=f"{person.name} ({person.email})")
+    person.is_active = active
     person.session_version += 1  # logged out straight away
     s.commit()
     flash(f"{person.name} can log in again." if person.is_active
@@ -120,6 +129,7 @@ def categories():
             last = s.scalar(select(func.max(Category.position)).where(Category.desk_id == g.desk.id))
             s.add(Category(desk_id=g.desk.id, name=name, description=description, position=(last or 0) + 1))
             try:
+                audit.log(s, g.desk.id, g.user, audit.CATEGORY_ADDED, utcnow(), new=name)  # flushes: may raise
                 s.commit()
             except IntegrityError:
                 s.rollback()
@@ -156,6 +166,10 @@ def edit_category(category_id):
             for position, row in enumerate(ordered):
                 row.position = position
     elif action in ("hide", "show"):
+        if category.is_active != (action == "show"):
+            audit.log(s, g.desk.id, g.user, audit.CATEGORY_CHANGED, utcnow(), field="shown",
+                      old="yes" if category.is_active else "no", new="yes" if action == "show" else "no",
+                      note=category.name)
         category.is_active = action == "show"
         flash(f"{category.name} is {'shown to customers again' if category.is_active else 'hidden from customers'}.")
     else:
@@ -164,6 +178,8 @@ def edit_category(category_id):
         errors = _category_problems(name, description)
         if errors:
             abort(400, next(iter(errors.values())))
+        if name != category.name:
+            audit.log(s, g.desk.id, g.user, audit.CATEGORY_CHANGED, utcnow(), field="name", old=category.name, new=name)
         category.name, category.description = name, description
         flash(f"Saved {name}.")
     try:

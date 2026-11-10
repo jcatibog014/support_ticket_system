@@ -26,7 +26,7 @@ brings a Waiting ticket back to In Progress, or reopens a Resolved one.
 from sqlalchemy import update
 from sqlalchemy.orm.attributes import set_committed_value
 
-from . import audit
+from . import audit, notify
 from .models import (CANCELLED, CLOSED, FINISHED, IN_PROGRESS, NEW, OPEN, RESOLVED, STATUS_NAMES, WAITING,
                      Ticket)
 
@@ -125,3 +125,4 @@ def move(s, ticket, to, actor, now, resolution="", note=""):
     apply(s, ticket, now, **values)
     audit.log(s, ticket.desk_id, actor, audit.STATUS, now, ticket=ticket, field="status", old=before, new=to,
               note=resolution.strip() if to == RESOLVED else note)
+    notify.after_move(s, ticket, before, to, actor, now)

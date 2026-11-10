@@ -96,3 +96,49 @@ def verify(s, desk):
     if count != newest:
         return False, count, f"The newest {newest - count} line(s) are missing."
     return True, count, None
+
+
+# ---------- Reading ----------
+
+# The Audit Log page's "What" filter.
+GROUPS = {
+    "tickets": ("New tickets", (CREATED,)),
+    "status": ("Status changes", (STATUS,)),
+    "assign": ("Assignments", (ASSIGNED,)),
+    "triage": ("Priority and category", (PRIORITY, CATEGORY)),
+    "talk": ("Replies and notes", (REPLIED, NOTED)),
+    "people": ("Staff and roles", (ROLE_CHANGED, SWITCHED_OFF, SWITCHED_ON, INVITE_MADE, INVITE_CANCELLED, JOINED)),
+    "settings": ("Desk settings", (CATEGORY_ADDED, CATEGORY_CHANGED)),
+}
+PAGE_SIZE = 50
+
+
+def for_ticket(s, ticket, staff_view):
+    """A ticket's timeline, oldest first. Customers don't see internal lines."""
+    from sqlalchemy.orm import selectinload
+    query = select(AuditEvent).where(AuditEvent.ticket_id == ticket.id).options(selectinload(AuditEvent.actor))
+    if not staff_view:
+        query = query.where(AuditEvent.is_internal.is_(False))
+    return s.scalars(query.order_by(AuditEvent.seq)).all()
+
+
+def search(s, desk, actor_name="", group="", ticket_id=None, since=None, until=None):
+    """The WHERE-built query for the Audit Log page and its CSV file (newest first)."""
+    from sqlalchemy.orm import selectinload
+    query = select(AuditEvent).where(AuditEvent.desk_id == desk.id).options(selectinload(AuditEvent.ticket))
+    if actor_name:
+        query = query.where(AuditEvent.actor_name == actor_name)
+    if group in GROUPS:
+        query = query.where(AuditEvent.verb.in_(GROUPS[group][1]))
+    if ticket_id is not None:
+        query = query.where(AuditEvent.ticket_id == ticket_id)
+    if since is not None:
+        query = query.where(AuditEvent.created_at >= since)
+    if until is not None:
+        query = query.where(AuditEvent.created_at < until)
+    return query.order_by(AuditEvent.seq.desc())
+
+
+def actor_names(s, desk):
+    return s.scalars(select(AuditEvent.actor_name).where(AuditEvent.desk_id == desk.id).distinct()
+                     .order_by(AuditEvent.actor_name)).all()

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_history.html" import what %}
+{% from "_icons.html" import icon %}
+{% block title %}Audit Log - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Audit Log</h1>
+      <p class="lead">Every change on the desk, newest first. Lines are never changed or deleted.</p>
+    </div>
+    {% if can.can_export_audit_log(g.user) %}
+      <div class="head-actions">
+        <a class="button button-quiet" href="{{ url_for('audit.export', **request.args) }}">{{ icon('download', 16) }} Download CSV</a>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if chain_ok %}
+    <p class="chain chain-ok">{{ icon('shield') }} <span><strong>The history is intact.</strong>
+      All {{ checked }} lines were checked, and none was changed after it was written.</span></p>
+  {% else %}
+    <p class="chain chain-broken" role="alert">{{ icon('alert') }} <span><strong>The history was changed outside Ticket Tock.</strong>
+      {{ problem }} Lines from there on can't be trusted. Tell the Admin.</span></p>
+  {% endif %}
+
+  <form method="get" class="filters" role="search">
+    <label>Who
+      <select name="who">
+        <option value="">Everyone</option>
+        {% for name in names %}<option{% if shown.who == name %} selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select></label>
+    <label>What
+      <select name="what">
+        <option value="">Everything</option>
+        {% for key, (title, verbs) in groups.items() %}<option value="{{ key }}"{% if shown.what == key %} selected{% endif %}>{{ title }}</option>{% endfor %}
+      </select></label>
+    <label>Ticket <input type="text" name="ticket" value="{{ shown.ticket }}" placeholder="TT-12"></label>
+    <label>From <input type="date" name="since" value="{{ shown.since }}"></label>
+    <label>To <input type="date" name="until" value="{{ shown.until }}"></label>
+    <div class="form-actions">
+      {% if shown.values()|select|list %}<a class="button button-quiet" href="{{ url_for('audit.log') }}">Clear</a>{% endif %}
+      <button class="button button-quiet" type="submit">{{ icon('filter', 16) }} Filter</button>
+    </div>
+  </form>
+
+  {% if events %}
+    <div class="table-wrap">
+      <table class="table audit-table">
+        <thead><tr><th class="num">Line</th><th>When</th><th>Who</th><th>What Happened</th><th>Ticket</th></tr></thead>
+        <tbody>
+          {% for event in events %}
+            <tr>
+              <td class="num ticket-key">{{ event.seq }}</td>
+              <td class="nowrap">{{ event.created_at|nice_datetime }}</td>
+              <td><span class="audit-who">{{ event.actor_name }}</span>
+                <span class="audit-role">{{ ROLE_NAMES[event.actor_role] if event.actor_role else 'Automatic' }}</span></td>
+              <td>{{ what(event) }}{% if event.is_internal %} <span class="badge badge-internal">Team only</span>{% endif %}
+                {% if event.note and event.verb == 'status' %}<span class="audit-note">{{ event.note }}</span>{% endif %}</td>
+              <td>{% if event.ticket %}<a class="ticket-key" href="{{ url_for('tickets.show', number=event.ticket.number) }}">{{ event.ticket.key }}</a>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if pages > 1 %}
+      <nav class="pager" aria-label="Pages">
+        {% set args = request.args.to_dict() %}
+        {% if page > 1 %}{% set _ = args.update(page=page - 1) %}<a class="button button-small button-quiet" href="{{ url_for('audit.log', **args) }}">Newer</a>{% endif %}
+        <span>Page {{ page }} of {{ pages }} &middot; {{ plural(total, 'line') }}</span>
+        {% if page < pages %}{% set _ = args.update(page=page + 1) %}<a class="button button-small button-quiet" href="{{ url_for('audit.log', **args) }}">Older</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state">
+      {{ icon('history', 48) }}
+      <h2>Nothing Found</h2>
+      <p>No history lines match these filters.</p>
+    </div>
+  {% endif %}
+{% endblock %}

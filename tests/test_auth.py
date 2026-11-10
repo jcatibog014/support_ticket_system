@@ -126,8 +126,8 @@ def test_settings_changes_the_name(app):
 
 # ---------- Joining with an invite link ----------
 
-def make_invite(app, role=AGENT):
-    admin = make_user(app, "Sam Rivera", role="admin")
+def make_invite(app, role=AGENT, admin=None):
+    admin = admin or make_user(app, "Sam Rivera", role="admin")
     with app.app_context():
         s = db.session()
         token = invites.create(s, s.get(Desk, main_desk_id(app)), role, s.get(User, admin), utcnow())

@@ -2,6 +2,7 @@
 {% from "_macros.html" import csrf, avatar %}
 {% from "_tickets.html" import stamp, priority as priority_tag %}
 {% from "_icons.html" import icon %}
+{% from "_history.html" import timeline %}
 {% set staff_view = g.user.is_staff %}
 {% set version %}<input type="hidden" name="version" value="{{ ticket.version }}">{% endset %}
 {% block title %}{{ ticket.key }} {{ ticket.subject }} - {{ APP_NAME }}{% endblock %}
@@ -53,24 +54,38 @@
         {% endfor %}
       </section>
 
-      {% if can_reply %}
+      {% set can_note = can.can_add_note(g.user, ticket) %}
+      {% if can_reply or can_note %}
         <section class="card reply-box" id="reply">
           <form method="post" action="{{ url_for('tickets.reply', number=ticket.number) }}" class="stack">
             {{ csrf() }}
             <label class="field">
-              <span class="field-label">{{ 'Reply to ' ~ ticket.customer.first_name if staff_view else 'Your reply' }}</span>
+              <span class="field-label">{% if not staff_view %}Your reply{% elif can_reply %}Reply to {{ ticket.customer.first_name }}{% else %}Internal note{% endif %}</span>
               <textarea name="body" rows="5" maxlength="5000" required></textarea>
             </label>
             <div class="form-actions">
+              {% if can_note and can_reply %}
+                <label class="check-line note-switch spacer"><input type="checkbox" name="internal" value="1">
+                  Internal note: only the team sees it</label>
+              {% elif can_note %}
+                <input type="hidden" name="internal" value="1">
+                <p class="reply-note spacer">This ticket is {{ ticket.status_name|lower }}. Notes are for the team only.</p>
+              {% endif %}
               {% if not staff_view and ticket.status == 'resolved' %}<p class="reply-note spacer">Replying reopens the ticket.</p>{% endif %}
-              {% if can_wait %}<button class="button button-quiet" type="submit" name="then" value="waiting">Send and wait for customer</button>{% endif %}
-              <button class="button" type="submit">{{ icon('reply', 16) }} Send reply</button>
+              {% if can_wait and can_reply %}<button class="button button-quiet" type="submit" name="then" value="waiting">Send and wait for customer</button>{% endif %}
+              <button class="button" type="submit">{{ icon('reply', 16) }} {{ 'Send' if can_reply else 'Add note' }}</button>
             </div>
           </form>
         </section>
-      {% elif ticket.is_finished %}
-        <p class="reply-note">This ticket is {{ ticket.status_name|lower }}, so it can't have new replies.{% if not staff_view %} Need more help? <a href="{{ url_for('tickets.new') }}">Send a new ticket</a>.{% endif %}</p>
       {% endif %}
+      {% if ticket.is_finished and not staff_view %}
+        <p class="reply-note">This ticket is {{ ticket.status_name|lower }}, so it can't have new replies. Need more help? <a href="{{ url_for('tickets.new') }}">Send a new ticket</a>.</p>
+      {% endif %}
+
+      <section class="card" id="history">
+        <h2 class="card-title">History</h2>
+        {{ timeline(history) }}
+      </section>
     </div>
 
     <aside class="side-panel">

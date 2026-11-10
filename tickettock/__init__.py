@@ -52,6 +52,9 @@ def create_app(test_config=None):
         SESSION_COOKIE_SECURE=on_render,
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
         MAX_CONTENT_LENGTH=1024 * 1024,  # forms only for now
+        # Optional Gmail (an app password): Inbox notices are also emailed.
+        MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
+        MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
     )
     if test_config:
         app.config.update(test_config)
@@ -66,18 +69,36 @@ def create_app(test_config=None):
         raise RuntimeError("Set the DATABASE_URL environment variable on Render (Neon's connection string).")
 
     from . import auth, db, formatting
-    from .views import admin, main, tickets
+    from .views import admin, audit as audit_views, inbox, main, tickets
 
     db.init_app(app)
     auth.init_app(app)
     formatting.init_app(app)
     # auth comes first: its before_request (load_user) must run before the others'.
-    for blueprint in (auth.bp, main.bp, tickets.bp, admin.bp):
+    for blueprint in (auth.bp, main.bp, tickets.bp, inbox.bp, audit_views.bp, admin.bp):
         app.register_blueprint(blueprint)
 
+    audit_views.init_app(app)
     app.jinja_env.globals["APP_NAME"] = APP_NAME
+    from .models import A_ROLE, PRIORITY_NAMES, ROLE_NAMES, STATUS_NAMES
+    app.jinja_env.globals.update(STATUS_NAMES=STATUS_NAMES, PRIORITY_NAMES=PRIORITY_NAMES, ROLE_NAMES=ROLE_NAMES,
+                                 A_ROLE=A_ROLE)
     from . import tickets as ticket_rules
     app.jinja_env.globals["unassigned_count"] = ticket_rules.unassigned_count
+    from . import notify
+    app.jinja_env.globals["unread_count"] = notify.unread_count
+
+    @app.after_request
+    def send_emails(response):
+        # Emails go out after the change is saved (notify.py's outbox). Never let
+        # a mail problem spoil the page the person is waiting for.
+        from flask import g
+        if g.pop("emails_waiting", False):
+            try:
+                notify.deliver(db.session())
+            except Exception:  # noqa: BLE001
+                app.logger.exception("Sending emails failed; /tasks/tick will try again.")
+        return response
 
     @app.get("/healthz")
     def healthz():

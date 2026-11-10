@@ -23,6 +23,8 @@
           {{ link('tickets.mine', 'My Tickets', 'ticket', active=page in ('tickets.mine', 'tickets.show')) }}
           {{ link('tickets.new', 'New Ticket', 'plus') }}
         {% endif %}
+        {{ link('inbox.index', 'Inbox', 'inbox', count=unread_count()) }}
+        {% if can.can_view_audit_log(g.user) %}{{ link('audit.log', 'Audit Log', 'shield') }}{% endif %}
       </ul>
       {% if can.is_admin(g.user) %}
         <p class="side-label">Admin</p>

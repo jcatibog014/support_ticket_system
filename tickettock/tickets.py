@@ -11,7 +11,7 @@ from flask import abort
 from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.orm import selectinload
 
-from . import audit, workflow
+from . import audit, notify, workflow
 from . import permissions as can
 from .models import (ACTIVE, CANCELLED, CLOSED, IN_PROGRESS, NEW, OPEN, PRIORITY_NAMES, PRIORITY_RANK, RESOLVED,
                      STAFF_ROLES, STATUS_NAMES, TICKET_PREFIX, URGENT, WAITING, Category, Desk, Message, Ticket, User)
@@ -120,6 +120,7 @@ def reply(s, ticket, author, body, now, internal=False):
     message = Message(ticket_id=ticket.id, author_id=author.id, body=body, is_internal=internal, created_at=now)
     message.author = author
     s.add(message)
+    notify.after_reply(s, ticket, author, body, internal, now)
     if internal:
         audit.log(s, ticket.desk_id, author, audit.NOTED, now, ticket=ticket, internal=True)
         workflow.touch(s, ticket, now)
@@ -150,6 +151,7 @@ def assign(s, ticket, actor, assignee, now):
     ticket.assignee = assignee
     audit.log(s, ticket.desk_id, actor, audit.ASSIGNED, now, ticket=ticket, field="assignee",
               old=before.name if before else "", new=assignee.name if assignee else "")
+    notify.after_assign(s, ticket, assignee, actor, now)
     if assignee is not None and ticket.status == NEW:
         workflow.move(s, ticket, OPEN, actor, now)
     return True

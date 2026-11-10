@@ -6,7 +6,7 @@
 
 - [x] Stage 1 — Foundation
 - [x] Stage 2 — Tickets + workflow
-- [ ] Stage 3 — Audit history
+- [x] Stage 3 — Audit history
 - [ ] Stage 4 — SLA & escalation
 - [ ] Stage 5 — Agent tools
 - [ ] Stage 6 — Customer extras
