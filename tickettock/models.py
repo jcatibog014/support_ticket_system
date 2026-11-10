@@ -109,7 +109,7 @@ class User(Base):
     session_version: Mapped[int] = mapped_column(Integer, default=1)
     failed_logins: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime)
-    # A staff member who left is switched off, never deleted: their name stays on the history.
+    # A staff member who left is deactivated, never deleted: their name stays on the history.
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Also send Inbox notices by email (Settings). Only when the site has email set up.
     email_updates: Mapped[bool] = mapped_column(Boolean, default=True)

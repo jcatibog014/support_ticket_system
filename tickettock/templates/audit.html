@@ -7,6 +7,10 @@
     <div>
       <h1>Audit Log</h1>
       <p class="lead">Every change on the desk, newest first. Lines are never changed or deleted.</p>
+      {% if chain_ok %}
+        <p class="chain-line" title="Each line holds a code made from the line before it. If anyone edited or removed a line, the codes would stop matching.">
+          {{ icon('shield', 16) }} History intact: {{ plural(checked, 'line') }} checked</p>
+      {% endif %}
     </div>
     {% if can.can_export_audit_log(g.user) %}
       <div class="head-actions">
@@ -15,32 +19,38 @@
     {% endif %}
   </div>
 
-  {% if chain_ok %}
-    <p class="chain chain-ok">{{ icon('shield') }} <span><strong>The history is intact.</strong>
-      All {{ checked }} lines were checked, and none was changed after it was written.</span></p>
-  {% else %}
+  {% if not chain_ok %}
     <p class="chain chain-broken" role="alert">{{ icon('alert') }} <span><strong>The history was changed outside Ticket Tock.</strong>
       {{ problem }} Lines from there on can't be trusted. Tell the Admin.</span></p>
   {% endif %}
 
-  <form method="get" class="filters" role="search">
-    <label>Who
-      <select name="who">
-        <option value="">Everyone</option>
-        {% for name in names %}<option{% if shown.who == name %} selected{% endif %}>{{ name }}</option>{% endfor %}
-      </select></label>
+  {# One search box and the kind of change; the rest folds away under More filters. #}
+  {% set more = shown.who or shown.ticket or shown.since or shown.until %}
+  <form method="get" class="filters audit-filters" role="search">
+    <label class="search-label">Search
+      <input type="search" name="q" value="{{ shown.q }}" placeholder="A name, TT-12, or a word"></label>
     <label>What
       <select name="what">
         <option value="">Everything</option>
         {% for key, (title, verbs) in groups.items() %}<option value="{{ key }}"{% if shown.what == key %} selected{% endif %}>{{ title }}</option>{% endfor %}
       </select></label>
-    <label>Ticket <input type="text" name="ticket" value="{{ shown.ticket }}" placeholder="TT-12"></label>
-    <label>From <input type="date" name="since" value="{{ shown.since }}"></label>
-    <label>To <input type="date" name="until" value="{{ shown.until }}"></label>
     <div class="form-actions">
       {% if shown.values()|select|list %}<a class="button button-quiet" href="{{ url_for('audit.log') }}">Clear</a>{% endif %}
       <button class="button button-quiet" type="submit">{{ icon('filter', 16) }} Filter</button>
     </div>
+    <details class="more-filters"{% if more %} open{% endif %}>
+      <summary class="link-button">More filters</summary>
+      <div class="filters-more-row">
+        <label>Who
+          <select name="who">
+            <option value="">Everyone</option>
+            {% for name in names %}<option{% if shown.who == name %} selected{% endif %}>{{ name }}</option>{% endfor %}
+          </select></label>
+        <label>Ticket <input type="text" name="ticket" value="{{ shown.ticket }}" placeholder="TT-12"></label>
+        <label>From <input type="date" name="since" value="{{ shown.since }}"></label>
+        <label>To <input type="date" name="until" value="{{ shown.until }}"></label>
+      </div>
+    </details>
   </form>
 
   {% if events %}

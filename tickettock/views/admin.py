@@ -111,8 +111,8 @@ def switch(user_id):
     person.is_active = active
     person.session_version += 1  # logged out straight away
     s.commit()
-    flash(f"{person.name} can log in again." if person.is_active
-          else f"{person.name} can no longer log in. Their tickets and history stay.")
+    flash(f"{person.name} is active again and can log in." if person.is_active
+          else f"{person.name} is deactivated and can't log in. Their tickets and history stay.")
     return redirect(url_for("admin.staff"))
 
 

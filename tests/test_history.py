@@ -105,7 +105,7 @@ def test_the_audit_log_filters(app, team):
 def test_the_audit_log_says_when_the_chain_is_broken(app, team):
     make_ticket(app, team["customer"])
     lead = browser(app, team["lead"])
-    assert "The history is intact." in page(lead, "/audit")
+    assert "History intact: 1 line checked" in page(lead, "/audit")
     with app.app_context():
         s = db.session()
         s.execute(update(AuditEvent).values(new_value="Something else"))
@@ -135,7 +135,7 @@ def test_admin_actions_are_in_the_history(app, team):
     post(admin, "/admin/categories", {"name": "Shipping"})
     text = page(admin, "/audit?what=people")
     assert "Made Ana Reyes (ana@example.com) a Team Lead (was an Agent)" in text
-    assert "Switched off the account of Carlo Diaz" in text
+    assert "Deactivated the account of Carlo Diaz" in text
     assert "Made an invite link for an Agent" in text
     assert "Added the category Shipping" in page(admin, "/audit?what=settings")
 
@@ -241,3 +241,14 @@ def test_people_can_turn_emails_off(app, team):
     post(browser(app, team["agent"]), f"/tickets/{number}/reply", {"body": "Hello!"})
     assert mailer.outbox(app) == []
     assert notices(app, team["customer"])  # the Inbox still has it
+
+
+def test_the_audit_search_box_finds_people_tickets_and_words(app, team):
+    first = make_ticket(app, team["customer"], subject="Refund for October")
+    make_ticket(app, team["other_customer"], subject="Login trouble")
+    lead = browser(app, team["lead"])
+    assert "Sent the ticket" in page(lead, "/audit?q=refund").split("<tbody>")[1]  # the subject is on that line
+    by_person = page(lead, "/audit?q=jose")
+    assert "Jose Rizal" in by_person and "Maria Santos" not in by_person.split("<tbody>")[1]
+    by_ticket = page(lead, f"/audit?q=TT-{first}")
+    assert "Maria Santos" in by_ticket.split("<tbody>")[1] and "Jose Rizal" not in by_ticket.split("<tbody>")[1]

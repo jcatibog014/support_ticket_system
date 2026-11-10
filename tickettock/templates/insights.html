@@ -55,12 +55,12 @@
     <div class="stat stat-good"><span class="stat-value">{{ solved }}</span><span class="stat-label">Solved</span>
       <span class="stat-sub">Resolved, {{ periods[days]|lower }}</span></div>
     {% for rate, name in ((reply_rate, 'First Reply in Time'), (solved_rate, 'Solved in Time')) %}
-      <div class="stat{% if rate.percent is not none %}{{ ' stat-good' if rate.percent >= 90 else ' stat-warn' if rate.percent >= 75 else ' stat-bad' }}{% endif %}">
+      <div class="stat{% if rate.percent is not none %}{{ ' stat-good' if rate.percent >= 80 else ' stat-warn' if rate.percent >= 75 else ' stat-bad' }}{% endif %}">
         <span class="stat-value{% if rate.percent is none %} stat-none{% endif %}">{{ rate.percent ~ '%' if rate.percent is not none else 'None yet' }}</span>
         <span class="stat-label">{{ name }}</span>
         <span class="stat-sub">{{ rate.met }} of {{ rate.total }} within the time limit</span></div>
     {% endfor %}
-    <div class="stat"><span class="stat-value{% if not average %} stat-none{% endif %}">{% if average %}{{ average }}<span class="stat-unit"> / 5</span>{% else %}None yet{% endif %}</span>
+    <div class="stat{% if average %}{{ ' stat-good' if average >= 4.5 else ' stat-warn' if average >= 3.5 else ' stat-bad' }}{% endif %}"><span class="stat-value{% if not average %} stat-none{% endif %}">{% if average %}{{ average }}<span class="stat-unit"> / 5</span>{% else %}None yet{% endif %}</span>
       <span class="stat-label">Customer Rating</span><span class="stat-sub">{{ plural(rated, 'rating') }}</span></div>
   </div>
 
@@ -69,7 +69,7 @@
     <section class="card chart-card chart-wide">
       <h2>Sent and Solved</h2>
       <p class="lead">New tickets and resolved tickets {{ 'each week' if step == 7 else 'each day' }}. When orange stays under blue, the queue grows.</p>
-      {% set top = nice_max(([trend|map(attribute=2)|max, trend|map(attribute=3)|max]|max) or 1) %}
+      {% set top, tick_step = axis([trend|map(attribute=2)|max, trend|map(attribute=3)|max]|max) %}
       {% set sent_line, sent_points = line_points(trend|map(attribute=2)|list, 900, 160, 20, top) %}
       {% set solved_line, solved_points = line_points(trend|map(attribute=3)|list, 900, 160, 20, top) %}
       {% set slot = 900 / ((trend|length - 1) or 1) %}
@@ -79,7 +79,7 @@
       </ul>
       <svg class="chart" viewBox="-36 0 1050 214" role="img" aria-labelledby="trend-title">
         <title id="trend-title">Sent and solved {{ 'per week' if step == 7 else 'per day' }}: {% for label, start, sent_n, solved_n in trend %}{{ label }} {{ sent_n }} sent, {{ solved_n }} solved{% if not loop.last %}; {% endif %}{% endfor %}</title>
-        {% for tick in ((0, top // 2, top) if top % 2 == 0 else (0, top)) %}
+        {% for tick in range(0, top + 1, tick_step) %}
           {% set y = 180 - 160 * tick / top %}
           <line class="gridline" x1="0" y1="{{ y }}" x2="900" y2="{{ y }}"></line>
           <text x="-10" y="{{ y + 5 }}" text-anchor="end">{{ tick }}</text>
@@ -94,6 +94,15 @@
             <line class="crosshair" x1="{{ sent_points[i][0] }}" y1="20" x2="{{ sent_points[i][0] }}" y2="180"></line>
             <circle class="dot dot-sent" cx="{{ sent_points[i][0] }}" cy="{{ sent_points[i][1] }}" r="4"></circle>
             <circle class="dot dot-solved" cx="{{ solved_points[i][0] }}" cy="{{ solved_points[i][1] }}" r="4"></circle>
+            {# A small label on hover, above the higher dot (kept inside the chart at both ends). #}
+            {% set words = sent_n ~ ' sent · ' ~ solved_n ~ ' solved' %}
+            {% set wide = words|length * 7.6 + 16 %}
+            {% set x = [[sent_points[i][0] - wide / 2, 0]|max, 900 - wide]|min %}
+            {% set y = [[sent_points[i][1], solved_points[i][1]]|min - 36, 0]|max %}
+            <g class="hover-label">
+              <rect x="{{ x }}" y="{{ y }}" width="{{ wide }}" height="24" rx="5"></rect>
+              <text x="{{ x + wide / 2 }}" y="{{ y + 16 }}" text-anchor="middle">{{ words }}</text>
+            </g>
           </g>
           {% if loop.first or loop.last or i == (trend|length // 2) %}
             <text x="{{ sent_points[i][0] }}" y="204" text-anchor="{{ 'start' if loop.first else 'end' if loop.last else 'middle' }}">{{ label }}</text>

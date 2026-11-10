@@ -128,17 +128,22 @@
                 <input type="file" name="pictures" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
                 <span class="hint">Up to {{ max_files }} pictures, 5 MB each</span></label>
             {% endif %}
-            <div class="form-actions">
-              {% if can_note and can_reply %}
-                <label class="check-line note-switch spacer"><input type="checkbox" name="internal" value="1">
-                  Internal note: only the team sees it</label>
-              {% elif can_note %}
-                <input type="hidden" name="internal" value="1">
-                <p class="reply-note spacer">This ticket is {{ ticket.status_name|lower }}. Notes are for the team only.</p>
-              {% endif %}
-              {% if not staff_view and ticket.status == 'resolved' %}<p class="reply-note spacer">Replying reopens the ticket.</p>{% endif %}
-              {% if can_wait and can_reply %}<button class="button button-quiet" type="submit" name="then" value="waiting">Send and wait for customer</button>{% endif %}
-              <button class="button" type="submit">{{ icon('reply', 16) }} {{ 'Send' if can_reply else 'Add note' }}</button>
+            <div class="form-actions reply-actions">
+              <div class="reply-options spacer">
+                {% if can_note and can_reply %}
+                  <label class="check-line note-switch"><input type="checkbox" name="internal" value="1">
+                    Internal note: only the team sees it</label>
+                {% elif can_note %}
+                  <input type="hidden" name="internal" value="1">
+                  <p class="reply-note">This ticket is {{ ticket.status_name|lower }}. Notes are for the team only.</p>
+                {% endif %}
+                {% if can_wait and can_reply %}
+                  <label class="check-line"><input type="checkbox" name="then" value="waiting">
+                    Then wait for the customer</label>
+                {% endif %}
+                {% if not staff_view and ticket.status == 'resolved' %}<p class="reply-note">Replying reopens the ticket.</p>{% endif %}
+              </div>
+              <button class="button" type="submit">{{ icon('reply', 16) }} {{ 'Send reply' if can_reply else 'Add note' }}</button>
             </div>
           </form>
         </section>
@@ -149,7 +154,17 @@
 
       <section class="card" id="history">
         <h2 class="card-title">History</h2>
-        {{ timeline(history) }}
+        {# A long history shows its newest lines; the older ones fold away. #}
+        {% set keep = 8 %}
+        {% if history|length > keep + 2 %}
+          <details class="older-history">
+            <summary class="link-button">Show {{ history|length - keep }} older lines</summary>
+            {{ timeline(history[:history|length - keep]) }}
+          </details>
+          {{ timeline(history[history|length - keep:]) }}
+        {% else %}
+          {{ timeline(history) }}
+        {% endif %}
       </section>
     </div>
 
@@ -201,7 +216,7 @@
               <div class="fact-actions">
                 {% if can.can_take(g.user, ticket) %}
                   <form method="post" action="{{ url_for('tickets.take', number=ticket.number) }}">{{ csrf() }}{{ version }}
-                    <button class="button button-small" type="submit">Take it</button></form>
+                    <button class="button button-small" type="submit">Assign to me</button></form>
                 {% endif %}
                 {% if can.can_drop(g.user, ticket) %}
                   <form method="post" action="{{ url_for('tickets.drop', number=ticket.number) }}">{{ csrf() }}{{ version }}

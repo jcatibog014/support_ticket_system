@@ -9,7 +9,7 @@
       <p class="lead">{{ g.user.role_name }} at {{ g.desk.name }}.</p>
     </div>
     <div class="head-actions">
-      <a class="button" href="{{ url_for('tickets.queue') }}">{{ icon('queue') }} Open the queue</a>
+      <a class="button" href="{{ url_for('tickets.queue') }}">{{ icon('queue') }} Go to queue</a>
     </div>
   </div>
 
@@ -37,12 +37,7 @@
     {% if mine %}
       <ul class="ticket-list">{% for ticket in mine %}{{ ticket_card(ticket, clock=sla_ctx.headline(ticket)) }}{% endfor %}</ul>
     {% else %}
-      <div class="empty-state">
-        {{ icon('empty', 48) }}
-        <h2>Nothing on Your Plate</h2>
-        <p>Take a ticket from the queue to get started.</p>
-        <a class="button" href="{{ url_for('tickets.queue', tab='unassigned') }}">See unassigned tickets</a>
-      </div>
+      <p class="empty-note">No tickets assigned to you. Head to the <a href="{{ url_for('tickets.queue', tab='unassigned') }}">Queue</a> to pick one up.</p>
     {% endif %}
   </section>
 {% endblock %}

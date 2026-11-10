@@ -1,0 +1,14 @@
+{# Messages after an action, as small notes at the bottom right. Good news fades away by itself
+   (app.js); an error stays until it is closed. Without JavaScript they simply stay. #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="toasts" role="status" aria-live="polite">
+      {% for category, message in messages %}
+        <p class="toast {{ 'toast-error' if category == 'error' else 'toast-ok' }}"{% if category != 'error' %} data-toast-fade{% endif %}>
+          <span>{{ message }}</span>
+          <button class="toast-close" type="button" data-toast-close hidden aria-label="Close">&times;</button>
+        </p>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}

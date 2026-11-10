@@ -26,7 +26,7 @@ from sqlalchemy import or_, select, update
 
 from . import audit, db, notify, workflow
 from .models import LEAD, RANK, STAFF_ROLES, Desk, Ticket, User
-from .sla import overdue_filter
+from .sla import FIRST_REPLY_LATE, SOLVE_LATE, overdue_filter
 
 bp = Blueprint("tick", __name__)
 
@@ -58,8 +58,8 @@ def clear_escalation(s, ticket, actor, now):
 
 def reason_for(ticket, now):
     if ticket.first_response_at is None and ticket.response_due_at and ticket.response_due_at < now:
-        return "Nobody has replied yet, and the first reply is late."
-    return "It isn't solved yet, and the time to solve it has run out."
+        return FIRST_REPLY_LATE
+    return SOLVE_LATE
 
 
 def run_desk(s, desk, now):

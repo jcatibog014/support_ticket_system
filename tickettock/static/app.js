@@ -186,7 +186,8 @@ function setUpBulk() {
   const update = () => {
     Object.entries(fields).forEach(([key, field]) => (field.hidden = action.value !== key));
     const ticked = [...picks].filter((pick) => pick.checked).length;
-    count.textContent = ticked ? `${ticked} ticked:` : "Tick tickets below, then";
+    count.textContent = `${ticked} ticked:`;
+    bar.hidden = ticked === 0; // the bar only shows once a ticket is ticked
   };
   action.addEventListener("change", update);
   picks.forEach((pick) => pick.addEventListener("change", update));
@@ -219,7 +220,57 @@ function setUpInstall() {
   window.addEventListener("appinstalled", () => (button.hidden = true));
 }
 
+// Messages fade away after a few seconds (errors stay); every message can be closed.
+function setUpToasts() {
+  const leave = (toast) => {
+    toast.classList.add("is-leaving");
+    setTimeout(() => toast.remove(), 400);
+  };
+  document.querySelectorAll(".toast").forEach((toast) => {
+    const close = toast.querySelector("[data-toast-close]");
+    close.hidden = false;
+    close.addEventListener("click", () => leave(toast));
+    if (toast.hasAttribute("data-toast-fade")) setTimeout(() => leave(toast), 6000);
+  });
+}
+
+// The demo note: closed once, it stays hidden until the browser tab is closed.
+function setUpDemoBar() {
+  const bar = document.querySelector("[data-demo-bar]");
+  if (!bar) return;
+  const close = bar.querySelector("[data-demo-close]");
+  try {
+    if (sessionStorage.getItem("tickettock-demo-note") === "closed") bar.classList.add("is-closed");
+  } catch (error) {
+    // Storage can be blocked: the note just stays.
+  }
+  close.hidden = false;
+  close.addEventListener("click", () => {
+    bar.classList.add("is-closed");
+    try {
+      sessionStorage.setItem("tickettock-demo-note", "closed");
+    } catch (error) {
+      // Fine: it is hidden on this page anyway.
+    }
+  });
+}
+
+// A form's Save button sleeps until something in the form changes (Categories).
+function setUpWatchChanges() {
+  document.querySelectorAll("form[data-watch-changes]").forEach((form) => {
+    const button = form.querySelector('button[type="submit"]:not([name])');
+    if (!button) return;
+    button.disabled = true;
+    const wake = () => (button.disabled = false);
+    form.addEventListener("input", wake);
+    form.addEventListener("change", wake);
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  setUpToasts();
+  setUpDemoBar();
+  setUpWatchChanges();
   setUpInstall();
   setUpSuggestions();
   setUpSavedReplies();

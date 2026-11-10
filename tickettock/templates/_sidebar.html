@@ -20,8 +20,8 @@
           {{ link('main.home', 'Home', 'home') }}
           {{ link('tickets.queue', 'Queue', 'queue', active=page == 'tickets.queue' or (page == 'tickets.show'), count=unassigned_count()) }}
         {% else %}
-          {{ link('tickets.mine', 'My Tickets', 'ticket', active=page in ('tickets.mine', 'tickets.show')) }}
-          {{ link('tickets.new', 'New Ticket', 'plus') }}
+          {# New Ticket is the main button on My Tickets, so the menu doesn't repeat it. #}
+          {{ link('tickets.mine', 'My Tickets', 'ticket', active=page in ('tickets.mine', 'tickets.show', 'tickets.new')) }}
         {% endif %}
         {{ link('inbox.index', 'Inbox', 'inbox', count=unread_count()) }}
         {{ link('help.index', 'Help Articles', 'book', active=page.startswith('help.')) }}

@@ -89,9 +89,14 @@ def _form(s):
     return fields, articles.problems(fields["title"], fields["body"])
 
 
-def _page(s, article, errors):
-    return render_template("help/edit.html", article=article, errors=errors,
+def _page(s, article, errors, preview=False):
+    return render_template("help/edit.html", article=article, errors=errors, preview=preview,
                            categories=desks.categories(s, g.desk)), 400 if errors else 200
+
+
+def _wants_preview():
+    """The Preview button: show the article as readers will see it, and save nothing."""
+    return request.form.get("action") == "preview"
 
 
 @bp.route("/new", methods=["GET", "POST"])
@@ -102,6 +107,8 @@ def new():
     if request.method == "GET":
         return _page(s, SimpleNamespace(id=None, title="", body="", category_id=None, is_published=False), {})
     fields, errors = _form(s)
+    if _wants_preview():
+        return _page(s, SimpleNamespace(id=None, **fields), {}, preview=True)
     if errors:
         return _page(s, SimpleNamespace(id=None, **fields), errors)
     article = Article(desk_id=g.desk.id, created_by_id=g.user.id, updated_at=utcnow(), **fields)
@@ -130,6 +137,8 @@ def edit(article_id):
         flash(f"Deleted {article.title}.")
         return redirect(url_for("help.index"))
     fields, errors = _form(s)
+    if _wants_preview():
+        return _page(s, SimpleNamespace(id=article.id, **fields), {}, preview=True)
     if errors:
         return _page(s, SimpleNamespace(id=article.id, **fields), errors)
     note = ("published" if fields["is_published"] and not article.is_published

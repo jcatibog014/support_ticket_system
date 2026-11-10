@@ -150,6 +150,11 @@ def reply(s, ticket, author, body, now, internal=False):
     audit.log(s, ticket.desk_id, author, audit.REPLIED, now, ticket=ticket)
     if can.is_staff(author):
         workflow.touch(s, ticket, now, **({"first_response_at": now} if ticket.first_response_at is None else {}))
+        if ticket.escalated_at is not None and ticket.escalation_reason == sla.FIRST_REPLY_LATE:
+            # Escalated because nobody had replied: this reply is the answer.
+            workflow.apply(s, ticket, now, escalated_at=None, escalation_reason="")
+            audit.log(s, ticket.desk_id, author, audit.DE_ESCALATED, now, ticket=ticket, internal=True,
+                      note="Cleared by itself: the first reply was sent.")
         if ticket.status == NEW:
             workflow.move(s, ticket, OPEN, author, now)
     else:

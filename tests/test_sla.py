@@ -297,3 +297,31 @@ def test_holidays(app, team):
     post(admin, f"/admin/holidays/{party.id}/remove")
     with app.app_context():
         assert db.session().scalar(select(Holiday).where(Holiday.name == "Office party")) is None
+
+
+# ---------- Escalations clear by themselves when their reason is gone ----------
+
+def test_the_first_reply_clears_a_no_reply_escalation(app, team):
+    number = make_late(app, team)
+    run_tick(app)
+    assert get_ticket(app, number).escalation_reason == sla.FIRST_REPLY_LATE
+    post(browser(app, team["agent"]), f"/tickets/{number}/reply", {"body": "Sorry for the wait! Looking now."})
+    assert get_ticket(app, number).escalated_at is None
+    text = browser(app, team["lead"]).get(f"/tickets/{number}").get_data(as_text=True)
+    assert "cleared the escalation (the first reply was sent)" in text
+
+
+def test_assigning_alone_keeps_the_escalation(app, team):
+    number = make_late(app, team)
+    run_tick(app)
+    post(browser(app, team["agent"]), f"/tickets/{number}/take", {"version": str(get_ticket(app, number).version)})
+    assert get_ticket(app, number).escalated_at is not None  # the customer still has no answer
+
+
+def test_resolving_clears_any_escalation(app, team):
+    number = make_ticket(app, team["customer"], status="in_progress", assignee_id=team["agent"])
+    agent = browser(app, team["agent"])
+    post(agent, f"/tickets/{number}/escalate", {"reason": "Need billing access.", "version": str(get_ticket(app, number).version)})
+    post(agent, f"/tickets/{number}/move", {"to": "resolved", "resolution": "Done.", "version": str(get_ticket(app, number).version)})
+    ticket = get_ticket(app, number)
+    assert ticket.status == "resolved" and ticket.escalated_at is None

@@ -30,7 +30,7 @@
           <span class="person">{{ avatar(person) }}</span>
           <span class="person-name"><strong>{{ person.name }}</strong>{% if person.id == g.user.id %} <span class="muted">(you)</span>{% endif %}
             <small>{{ person.email }}</small></span>
-          {% if not person.is_active %}<span class="badge badge-off">Switched off</span>{% endif %}
+          {% if not person.is_active %}<span class="badge badge-off">Deactivated</span>{% endif %}
           {% if can.can_change_role(g.user, person) %}
             <form method="post" action="{{ url_for('admin.change_role', user_id=person.id) }}">
               {{ csrf() }}
@@ -41,11 +41,11 @@
               <button class="button button-small button-quiet" type="submit" data-auto-submit-button>Save</button>
             </form>
             <form method="post" action="{{ url_for('admin.switch', user_id=person.id) }}"
-                  {% if person.is_active %}data-confirm="Switch off {{ person.name }}'s account? They can't log in until you switch it on again."{% endif %}>
+                  {% if person.is_active %}data-confirm="Deactivate {{ person.name }}? They can't log in until you reactivate them. Their tickets and history stay."{% endif %}>
               {{ csrf() }}
               <input type="hidden" name="active" value="{{ '0' if person.is_active else '1' }}">
               <button class="button button-small {{ 'button-danger' if person.is_active else 'button-quiet' }}" type="submit">
-                {{ 'Switch off' if person.is_active else 'Switch on' }}</button>
+                {{ 'Deactivate' if person.is_active else 'Reactivate' }}</button>
             </form>
           {% else %}
             {{ role_badge(person.role, person.role_name) }}

@@ -33,6 +33,7 @@
     {% endfor %}
   </nav>
 
+  <div class="filter-bar">
   <form method="get" class="filters" role="search">
     <input type="hidden" name="tab" value="{{ tab }}">
     <label class="search-label">Search
@@ -52,17 +53,19 @@
       <button class="button button-quiet" type="submit">{{ icon('filter', 16) }} Filter</button>
     </div>
   </form>
-  <details class="save-view">
-    <summary class="link-button">{{ icon('plus', 14) }} Save these filters as a view</summary>
-    <form method="post" action="{{ url_for('tools.save_view') }}" class="inline-fields">
+  {# Save these filters as a view: a bookmark button beside Filter that opens a small panel. #}
+  <details class="save-view" data-popover>
+    <summary class="button button-quiet icon-only" title="Save these filters as a view">{{ icon('bookmark', 18) }}<span class="visually-hidden">Save these filters as a view</span></summary>
+    <form method="post" action="{{ url_for('tools.save_view') }}" class="save-view-panel">
       {{ csrf() }}
       {% for key, value in request.args.items() if key in ('tab', 'q', 'category', 'priority') %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
       {% if 'tab' not in request.args %}<input type="hidden" name="tab" value="{{ tab }}">{% endif %}
-      <label class="visually-hidden" for="view-name">View name</label>
-      <input type="text" id="view-name" name="name" maxlength="40" placeholder="For example: Urgent billing" required>
+      <label class="field"><span class="field-label">Save these filters as a view</span>
+        <input type="text" name="name" maxlength="40" placeholder="For example: Urgent billing" required></label>
       <button class="button button-small" type="submit">Save view</button>
     </form>
   </details>
+  </div>
 
   {% if staff and rows %}
     <form method="post" action="{{ url_for('tools.bulk') }}" id="bulk" class="bulk-bar">

@@ -7,11 +7,12 @@
   <div class="page-head">
     <div>
       <h1>Help Articles</h1>
-      <p class="lead">Answers to the questions we hear most. Can't find yours?
-        <a href="{{ url_for('tickets.new') }}">Send us a ticket</a>.</p>
+      <p class="lead">Answers to the questions we hear most.</p>
     </div>
     {% if can.can_manage_articles(g.user) %}
       <div class="head-actions"><a class="button" href="{{ url_for('help.new') }}">{{ icon('plus') }} New article</a></div>
+    {% elif not can.is_staff(g.user) and (found or groups) %}
+      <div class="head-actions"><a class="button" href="{{ url_for('tickets.new') }}">{{ icon('ticket') }} Send a ticket</a></div>
     {% endif %}
   </div>
 
@@ -32,7 +33,8 @@
       <div class="empty-state section-gap">
         {{ icon('book', 48) }}
         <h2>No Articles Found</h2>
-        <p>Try other words, or <a href="{{ url_for('tickets.new') }}">send us a ticket</a> and we'll help.</p>
+        <p>Try other words, or send us a ticket and we'll help.</p>
+        {% if not can.is_staff(g.user) %}<a class="button" href="{{ url_for('tickets.new') }}">Send a ticket</a>{% endif %}
       </div>
     {% endif %}
   {% elif groups %}
@@ -49,6 +51,7 @@
       {{ icon('book', 48) }}
       <h2>No Articles Yet</h2>
       <p>{{ 'Write the first one: answer a question customers ask often.' if can.can_manage_articles(g.user) else 'Our team is writing them. Until then, send us a ticket.' }}</p>
+      {% if not can.is_staff(g.user) %}<a class="button" href="{{ url_for('tickets.new') }}">Send a ticket</a>{% endif %}
     </div>
   {% endif %}
 {% endblock %}
