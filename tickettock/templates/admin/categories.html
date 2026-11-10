@@ -6,7 +6,8 @@
   <div class="page-head">
     <div>
       <h1>Categories</h1>
-      <p class="lead">Customers pick one when they send a ticket. Hidden ones stay on old tickets.</p>
+      <p class="lead">Customers pick one when they send a ticket. Hidden ones stay on old tickets.
+        With Auto-assign on, new tickets go to the Agents in turn.</p>
     </div>
   </div>
 
@@ -29,6 +30,9 @@
               {{ icon('chevron-up') }}<span class="visually-hidden">Move {{ category.name }} up</span></button>
             <button class="icon-button" type="submit" name="action" value="down" title="Move down"{% if loop.last %} disabled{% endif %}>
               {{ icon('chevron-down') }}<span class="visually-hidden">Move {{ category.name }} down</span></button>
+            <button class="button button-quiet button-auto{% if category.auto_assign %} is-on{% endif %}" type="submit" name="action"
+                    value="{{ 'auto_off' if category.auto_assign else 'auto_on' }}" aria-pressed="{{ 'true' if category.auto_assign else 'false' }}"
+                    title="Give new tickets to the Agents in turn">{{ icon('person', 16) }} Auto-assign</button>
             <button class="button button-quiet" type="submit" name="action" value="{{ 'hide' if category.is_active else 'show' }}">
               {{ 'Hide' if category.is_active else 'Show' }}</button>
           </form>

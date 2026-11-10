@@ -40,6 +40,9 @@ HOURS_CHANGED, SLA_CHANGED = "hours_changed", "sla_changed"
 HOLIDAY_ADDED, HOLIDAY_REMOVED = "holiday_added", "holiday_removed"
 # The SLA (a ticket's):
 ESCALATED, DE_ESCALATED = "escalated", "de_escalated"
+# Agent tools:
+MERGED, MERGED_HERE = "merged", "merged_here"
+REPLY_SAVED, REPLY_CHANGED, REPLY_REMOVED = "reply_saved", "reply_changed", "reply_removed"
 
 LIMITS = {"actor_name": 80, "verb": 30, "field": 30, "old_value": 200, "new_value": 200, "note": 300}
 
@@ -107,14 +110,14 @@ def verify(s, desk):
 # The Audit Log page's "What" filter.
 GROUPS = {
     "tickets": ("New tickets", (CREATED,)),
-    "status": ("Status changes", (STATUS,)),
+    "status": ("Status changes and merges", (STATUS, MERGED, MERGED_HERE)),
     "escalations": ("Escalations", (ESCALATED, DE_ESCALATED)),
     "assign": ("Assignments", (ASSIGNED,)),
     "triage": ("Priority and category", (PRIORITY, CATEGORY)),
     "talk": ("Replies and notes", (REPLIED, NOTED)),
     "people": ("Staff and roles", (ROLE_CHANGED, SWITCHED_OFF, SWITCHED_ON, INVITE_MADE, INVITE_CANCELLED, JOINED)),
     "settings": ("Desk settings", (CATEGORY_ADDED, CATEGORY_CHANGED, HOURS_CHANGED, SLA_CHANGED, HOLIDAY_ADDED,
-                                   HOLIDAY_REMOVED)),
+                                   HOLIDAY_REMOVED, REPLY_SAVED, REPLY_CHANGED, REPLY_REMOVED)),
 }
 PAGE_SIZE = 50
 

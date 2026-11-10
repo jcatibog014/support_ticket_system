@@ -5,10 +5,13 @@
       ├──< categories           ("Billing", "Login and account", ...)
       ├──< sla_rules            (time limits per priority: first reply, solved)
       ├──< holidays             (days the clock doesn't run)
+      ├──< saved_replies        (answers the team uses again and again)
       ├──< tickets ── customer_id, assignee_id ──> users
-      │      └──< messages      (the conversation: the customer's and the team's replies)
+      │      ├──< messages      (the conversation: the customer's and the team's replies)
+      │      └──< ticket_views  (who on the team has the ticket open right now)
       ├──< audit_events         (the history: append-only, each row chained to the one before)
-      └──< notifications ── user_id ──> users   (someone's Inbox, and the emails it sends)
+      ├──< notifications ── user_id ──> users   (someone's Inbox, and the emails it sends)
+      └──< saved_views ── user_id ──> users     (someone's saved queue filters)
 
 There is one real desk (made by "flask create-admin"). Every Try Demo makes
 its own small desk, so a visitor's changes never reach the real one. Every row
@@ -171,6 +174,9 @@ class Category(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
     # A category nobody should pick any more is hidden, not deleted: old tickets keep it.
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Round-robin: new tickets in this category go to the next Agent in turn (tickets.auto_assign).
+    auto_assign: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_assigned_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class Ticket(Base):
@@ -214,10 +220,13 @@ class Ticket(Base):
     # Escalated: a Team Lead was called in (late, or an Agent asked for help).
     escalated_at: Mapped[datetime | None] = mapped_column(DateTime)
     escalation_reason: Mapped[str] = mapped_column(String(300), default="")
+    # A duplicate is closed and points at the ticket it was merged into.
+    merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("tickets.id", ondelete="SET NULL"))
 
     customer: Mapped[User] = relationship(foreign_keys=[customer_id])
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id])
     category: Mapped[Category | None] = relationship()
+    merged_into: Mapped["Ticket | None"] = relationship(remote_side=[id])
     messages: Mapped[list["Message"]] = relationship(back_populates="ticket", order_by="Message.id",
                                                      cascade="all, delete-orphan", passive_deletes=True)
 
@@ -316,6 +325,43 @@ class Holiday(Base):
     desk_id: Mapped[int] = mapped_column(ForeignKey("desks.id", ondelete="CASCADE"), index=True)
     day: Mapped[date] = mapped_column(Date)
     name: Mapped[str] = mapped_column(String(80))
+
+
+class SavedReply(Base):
+    """An answer the team gives often. {name}, {agent} and {ticket} are filled in when it is used."""
+    __tablename__ = "saved_replies"
+    __table_args__ = (UniqueConstraint("desk_id", "title"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    desk_id: Mapped[int] = mapped_column(ForeignKey("desks.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(80))
+    body: Mapped[str] = mapped_column(Text)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class SavedView(Base):
+    """A person's saved queue filters: a name and the query string (?tab=...&q=...)."""
+    __tablename__ = "saved_views"
+    __table_args__ = (UniqueConstraint("user_id", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(40))
+    query: Mapped[str] = mapped_column(String(300))
+
+
+class TicketView(Base):
+    """Who on the team had a ticket open, and when (for "Ben is also looking at this")."""
+    __tablename__ = "ticket_views"
+    __table_args__ = (UniqueConstraint("ticket_id", "user_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    seen_at: Mapped[datetime] = mapped_column(DateTime)
+
+    user: Mapped[User] = relationship()
 
 
 # What an Inbox notice is about (notify.py writes them, inbox.html turns them into words).

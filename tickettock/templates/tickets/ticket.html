@@ -17,7 +17,15 @@
           {{ stamp(ticket.status, ticket.status_name, big=True) }}
         </div>
         <p class="lead">Sent by {{ ticket.customer.name }} on {{ ticket.created_at|nice_datetime }}{% if ticket.category %} &middot; {{ ticket.category.name }}{% endif %}</p>
+        {% if ticket.merged_into %}
+          <p class="merged-note">{{ icon('merge', 16) }} Merged into <a href="{{ url_for('tickets.show', number=ticket.merged_into.number) }}">{{ ticket.merged_into.key }} {{ ticket.merged_into.subject }}</a>. Please follow that ticket.</p>
+        {% endif %}
       </header>
+      {% if staff_view %}
+        {# app.js asks every 20 seconds who else has the ticket open, and updates this line. #}
+        <p class="looking" data-looking-url="{{ url_for('tickets.looking', number=ticket.number) }}"{% if not looking %} hidden{% endif %}>
+          {{ icon('eye', 16) }} <span data-looking-names>{% if looking %}{{ looking|map(attribute='name')|join(', ') }} {{ 'is' if looking|length == 1 else 'are' }} also looking at this ticket.{% endif %}</span></p>
+      {% endif %}
 
       {% if ticket.status == 'resolved' or (ticket.status == 'closed' and ticket.resolution) %}
         <section class="card resolution-card">
@@ -57,11 +65,22 @@
       {% set can_note = can.can_add_note(g.user, ticket) %}
       {% if can_reply or can_note %}
         <section class="card reply-box" id="reply">
+          {% if saved_replies %}
+            {# Without JavaScript, Use reloads the page with the reply filled in. app.js puts it in the box at once. #}
+            <form method="get" action="{{ url_for('tickets.show', number=ticket.number, _anchor='reply') }}" class="saved-pick">
+              <label for="saved-reply" class="field-label">Saved reply</label>
+              <select name="use" id="saved-reply" data-saved-reply>
+                <option value="">Choose one</option>
+                {% for reply, text in saved_replies %}<option value="{{ reply.id }}" data-text="{{ text }}">{{ reply.title }}</option>{% endfor %}
+              </select>
+              <button class="button button-small button-quiet no-js-only" type="submit">Use</button>
+            </form>
+          {% endif %}
           <form method="post" action="{{ url_for('tickets.reply', number=ticket.number) }}" class="stack">
             {{ csrf() }}
             <label class="field">
               <span class="field-label">{% if not staff_view %}Your reply{% elif can_reply %}Reply to {{ ticket.customer.first_name }}{% else %}Internal note{% endif %}</span>
-              <textarea name="body" rows="5" maxlength="5000" required></textarea>
+              <textarea name="body" rows="5" maxlength="5000" required data-reply-body>{{ draft }}</textarea>
             </label>
             <div class="form-actions">
               {% if can_note and can_reply %}
@@ -188,7 +207,8 @@
         </section>
       {% endif %}
 
-      {% if moves or can_resolve %}
+      {% set can_merge = can.can_merge(g.user, ticket) %}
+      {% if moves or can_resolve or can_merge %}
         <section class="card">
           <h2>{{ 'Move Ticket' if staff_view else 'Your Ticket' }}</h2>
           <div class="moves">
@@ -212,6 +232,18 @@
                 <button class="button {{ 'button-danger' if to == 'cancelled' else 'button-quiet' }}" type="submit">{{ label }}</button>
               </form>
             {% endfor %}
+            {% if can_merge %}
+              <details class="resolve-form">
+                <summary class="button button-quiet button-wide">{{ icon('merge', 16) }} Merge into another ticket</summary>
+                <form method="post" action="{{ url_for('tickets.merge', number=ticket.number) }}" class="stack-tight"
+                      data-confirm="Merge {{ ticket.key }} into the other ticket? {{ ticket.key }} will be closed.">
+                  {{ csrf() }}{{ version }}
+                  <label class="field"><span class="field-label">The ticket to keep <span class="hint">Same customer</span></span>
+                    <input type="text" name="into" placeholder="TT-12" required></label>
+                  <button class="button" type="submit">Merge</button>
+                </form>
+              </details>
+            {% endif %}
           </div>
         </section>
       {% endif %}

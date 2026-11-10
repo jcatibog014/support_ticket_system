@@ -169,6 +169,14 @@ def edit_category(category_id):
             ordered[index], ordered[other] = ordered[other], ordered[index]
             for position, row in enumerate(ordered):
                 row.position = position
+    elif action in ("auto_on", "auto_off"):
+        turn_on = action == "auto_on"
+        if category.auto_assign != turn_on:
+            audit.log(s, g.desk.id, g.user, audit.CATEGORY_CHANGED, utcnow(), field="auto_assign",
+                      old="yes" if category.auto_assign else "no", new="yes" if turn_on else "no", note=category.name)
+        category.auto_assign = turn_on
+        flash(f"New {category.name} tickets now go to the Agents in turn." if turn_on
+              else f"New {category.name} tickets now wait in the queue.")
     elif action in ("hide", "show"):
         if category.is_active != (action == "show"):
             audit.log(s, g.desk.id, g.user, audit.CATEGORY_CHANGED, utcnow(), field="shown",

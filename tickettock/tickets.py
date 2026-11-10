@@ -13,7 +13,8 @@ from sqlalchemy.orm import selectinload
 
 from . import audit, hours, notify, sla, workflow
 from . import permissions as can
-from .models import (ACTIVE, CANCELLED, CLOSED, IN_PROGRESS, NEW, OPEN, PRIORITY_NAMES, PRIORITY_RANK, RESOLVED,
+from .models import (ACTIVE, AGENT, CANCELLED, CLOSED, IN_PROGRESS, NEW, OPEN, PRIORITIES, PRIORITY_NAMES,
+                     PRIORITY_RANK, RESOLVED,
                      STAFF_ROLES, STATUS_NAMES, TICKET_PREFIX, URGENT, WAITING, Category, Desk, Message, Ticket, User)
 
 SUBJECT_MAX = 120
@@ -107,7 +108,25 @@ def create(s, customer, subject, description, now, category=None, priority="norm
     s.add(ticket)
     s.flush()
     audit.log(s, ticket.desk_id, customer, audit.CREATED, now, ticket=ticket, new=subject)
+    if category is not None and category.auto_assign:
+        auto_assign(s, ticket, category, now)
     return ticket
+
+
+def auto_assign(s, ticket, category, now):
+    """Round-robin: give the ticket to the next active Agent after the one who got the
+    last ticket in this category (by id, starting again at the first). Ticket Tock does it."""
+    agents = s.scalars(select(User).where(User.desk_id == ticket.desk_id, User.role == AGENT,
+                                          User.is_active.is_(True)).order_by(User.id)).all()
+    if not agents:
+        return None
+    after = [agent for agent in agents if category.last_assigned_id is not None and agent.id > category.last_assigned_id]
+    chosen = after[0] if after else agents[0]
+    s.execute(update(Category).where(Category.id == category.id).values(last_assigned_id=chosen.id)
+              .execution_options(synchronize_session=False))
+    category.last_assigned_id = chosen.id
+    assign(s, ticket, None, chosen, now)
+    return chosen
 
 
 # ---------- Replies ----------
@@ -268,3 +287,42 @@ def unassigned_count():
         return 0
     return db.session().scalar(select(func.count()).select_from(Ticket).where(
         visible_filter(g.user), tab_filter("unassigned", g.user)))
+
+
+# ---------- Many tickets at once (Team Leads) ----------
+
+BULK_ACTIONS = {"assign": "Give to", "priority": "Set priority", "close": "Close resolved tickets"}
+
+
+def bulk(s, user, rows, action, value, now):
+    """Do one change to many tickets. Each ticket is checked on its own (permissions,
+    workflow, version) and saved on its own, so one refusal doesn't stop the rest.
+    Returns (how many were changed, how many were skipped)."""
+    assignee = None
+    if action == "assign" and value:
+        assignee = s.get(User, int(value)) if str(value).isdigit() else None
+        if assignee is None or assignee.desk_id != user.desk_id or not assignee.is_staff or not assignee.is_active:
+            raise ValueError("Choose someone from the support team.")
+    if action == "priority" and value not in PRIORITIES:
+        raise ValueError("Choose a priority from the list.")
+    if action not in BULK_ACTIONS:
+        raise ValueError("Choose what to do.")
+    done = skipped = 0
+    for ticket in rows:
+        try:
+            if action == "assign" and can.can_assign(user, ticket):
+                changed = assign(s, ticket, user, assignee, now)
+            elif action == "priority" and can.can_triage(user, ticket):
+                changed = set_priority(s, ticket, user, value, now)
+            elif (action == "close" and can.can_move(user, ticket, CLOSED, now)
+                  and workflow.move_problem(ticket, CLOSED) is None):
+                workflow.move(s, ticket, CLOSED, user, now)
+                changed = True
+            else:
+                skipped += 1
+                continue
+            s.commit()
+            done += bool(changed)
+        except workflow.TicketChanged:
+            skipped += 1
+    return done, skipped

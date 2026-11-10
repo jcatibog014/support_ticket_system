@@ -135,3 +135,22 @@ def move(s, ticket, to, actor, now, resolution="", note=""):
     audit.log(s, ticket.desk_id, actor, audit.STATUS, now, ticket=ticket, field="status", old=before, new=to,
               note=resolution.strip() if to == RESOLVED else note)
     notify.after_move(s, ticket, before, to, actor, now)
+
+
+def merge(s, ticket, target, actor, now):
+    """Close a duplicate and point it at the ticket that carries on (permissions.can_merge checks who).
+
+    Not a normal move: a duplicate can be closed from any open status. The team
+    gets the duplicate's words as an internal note on the target, both tickets
+    get a history line, and the customer is told where to look.
+    """
+    from .models import Message
+    before = ticket.status
+    apply(s, ticket, now, status=CLOSED, closed_at=now, merged_into_id=target.id, paused_since=None,
+          escalated_at=None, escalation_reason="")
+    audit.log(s, ticket.desk_id, actor, audit.MERGED, now, ticket=ticket, field="status", old=before, new=target.key)
+    s.add(Message(ticket_id=target.id, author_id=actor.id, is_internal=True, created_at=now,
+                  body=f"Merged from {ticket.key} ({ticket.subject}):\n\n{ticket.description}"))
+    touch(s, target, now)
+    audit.log(s, target.desk_id, actor, audit.MERGED_HERE, now, ticket=target, old=ticket.key, note=ticket.subject)
+    notify.send(s, ticket.customer, ticket, "merged", actor, now, target.key)

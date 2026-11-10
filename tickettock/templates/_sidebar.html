@@ -24,6 +24,7 @@
           {{ link('tickets.new', 'New Ticket', 'plus') }}
         {% endif %}
         {{ link('inbox.index', 'Inbox', 'inbox', count=unread_count()) }}
+        {% if g.user.is_staff %}{{ link('tools.saved_replies', 'Saved Replies', 'reply') }}{% endif %}
         {% if can.can_view_audit_log(g.user) %}{{ link('audit.log', 'Audit Log', 'shield') }}{% endif %}
       </ul>
       {% if can.is_admin(g.user) %}

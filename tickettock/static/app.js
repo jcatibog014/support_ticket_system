@@ -92,7 +92,65 @@ function setUpCopy() {
   });
 }
 
+// Ticket page: a saved reply goes straight into the reply box (without JavaScript, Use reloads the page).
+function setUpSavedReplies() {
+  const picker = document.querySelector("[data-saved-reply]");
+  const box = document.querySelector("[data-reply-body]");
+  if (!picker || !box) return;
+  picker.addEventListener("change", () => {
+    const option = picker.selectedOptions[0];
+    if (!option || !option.dataset.text) return;
+    const before = box.value.trimEnd();
+    box.value = before ? [before, option.dataset.text].join("\n\n") : option.dataset.text;
+    picker.value = "";
+    box.focus();
+  });
+}
+
+// Ticket page: "Ben Torres is also looking at this ticket", checked every 20 seconds.
+function setUpLooking() {
+  const line = document.querySelector("[data-looking-url]");
+  if (!line) return;
+  const names = line.querySelector("[data-looking-names]");
+  const check = async () => {
+    if (document.hidden) return;
+    try {
+      const response = await fetch(line.dataset.lookingUrl, { headers: { Accept: "application/json" } });
+      if (!response.ok) return;
+      const answer = await response.json();
+      line.hidden = answer.names.length === 0;
+      names.textContent = answer.names.length
+        ? `${answer.names.join(", ")} ${answer.names.length === 1 ? "is" : "are"} also looking at this ticket.`
+        : "";
+    } catch (error) {
+      // Offline for a moment: try again next time.
+    }
+  };
+  setInterval(check, 20000);
+}
+
+// Queue: the bulk bar shows only the box its action needs, and counts the ticked tickets.
+function setUpBulk() {
+  const bar = document.getElementById("bulk");
+  if (!bar) return;
+  const action = bar.querySelector('[name="action"]');
+  const fields = { assign: bar.querySelector('[name="assignee_id"]'), priority: bar.querySelector('[name="priority"]') };
+  const count = bar.querySelector("[data-bulk-count]");
+  const picks = document.querySelectorAll("[data-bulk-pick]");
+  const update = () => {
+    Object.entries(fields).forEach(([key, field]) => (field.hidden = action.value !== key));
+    const ticked = [...picks].filter((pick) => pick.checked).length;
+    count.textContent = ticked ? `${ticked} ticked:` : "Tick tickets below, then";
+  };
+  action.addEventListener("change", update);
+  picks.forEach((pick) => pick.addEventListener("change", update));
+  update();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  setUpSavedReplies();
+  setUpLooking();
+  setUpBulk();
   setUpTheme();
   setUpMenu();
   setUpPopovers();

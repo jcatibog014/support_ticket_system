@@ -8,7 +8,7 @@
 - [x] Stage 2 — Tickets + workflow
 - [x] Stage 3 — Audit history
 - [x] Stage 4 — SLA & escalation (auto-close after 7 days came here too, from stage 6)
-- [ ] Stage 5 — Agent tools
+- [x] Stage 5 — Agent tools
 - [ ] Stage 6 — Customer extras
 - [ ] Stage 7 — Insights
 - [ ] Stage 8 — Demo, PWA, deploy, README

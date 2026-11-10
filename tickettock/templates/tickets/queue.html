@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_tickets.html" import ticket_card %}
 {% from "_icons.html" import icon %}
+{% from "_macros.html" import csrf %}
 {% block title %}Queue - {{ APP_NAME }}{% endblock %}
 {% block content %}
   <div class="page-head">
@@ -9,6 +10,21 @@
       <p class="lead">Urgent first, then oldest first. Take a ticket to make it yours.</p>
     </div>
   </div>
+
+  {% if views %}
+    <nav class="view-chips" aria-label="Your saved views">
+      <span class="muted small">Your views</span>
+      {% for view in views %}
+        <span class="view-chip{% if view.query == this_query %} is-here{% endif %}">
+          <a href="{{ url_for('tickets.queue', **view_args(view)) }}">{{ view.name }}</a>
+          <form method="post" action="{{ url_for('tools.delete_view', view_id=view.id) }}">
+            {{ csrf() }}
+            <button type="submit" title="Delete {{ view.name }}">{{ icon('x', 12) }}<span class="visually-hidden">Delete {{ view.name }}</span></button>
+          </form>
+        </span>
+      {% endfor %}
+    </nav>
+  {% endif %}
 
   <nav class="tabs" aria-label="Queue tabs">
     {% for key in counts %}
@@ -36,9 +52,42 @@
       <button class="button button-quiet" type="submit">{{ icon('filter', 16) }} Filter</button>
     </div>
   </form>
+  <details class="save-view">
+    <summary class="link-button">{{ icon('plus', 14) }} Save these filters as a view</summary>
+    <form method="post" action="{{ url_for('tools.save_view') }}" class="inline-fields">
+      {{ csrf() }}
+      {% for key, value in request.args.items() if key in ('tab', 'q', 'category', 'priority') %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+      {% if 'tab' not in request.args %}<input type="hidden" name="tab" value="{{ tab }}">{% endif %}
+      <label class="visually-hidden" for="view-name">View name</label>
+      <input type="text" id="view-name" name="name" maxlength="40" placeholder="For example: Urgent billing" required>
+      <button class="button button-small" type="submit">Save view</button>
+    </form>
+  </details>
+
+  {% if staff and rows %}
+    <form method="post" action="{{ url_for('tools.bulk') }}" id="bulk" class="bulk-bar">
+      {{ csrf() }}
+      <input type="hidden" name="back" value="{{ request.full_path.rstrip('?') }}">
+      <span class="bulk-count" data-bulk-count>Tick tickets below, then</span>
+      <label class="visually-hidden" for="bulk-action">What to do</label>
+      <select name="action" id="bulk-action">
+        {% for key, title in bulk_actions.items() %}<option value="{{ key }}">{{ title }}</option>{% endfor %}
+      </select>
+      <label class="visually-hidden" for="bulk-assignee">Give to</label>
+      <select name="assignee_id" id="bulk-assignee">
+        <option value="">Nobody (back to the queue)</option>
+        {% for person in staff %}<option value="{{ person.id }}">{{ person.name }}</option>{% endfor %}
+      </select>
+      <label class="visually-hidden" for="bulk-priority">Priority</label>
+      <select name="priority" id="bulk-priority">
+        {% for key, name in priority_names.items() %}<option value="{{ key }}">{{ name }}</option>{% endfor %}
+      </select>
+      <button class="button button-small" type="submit">Apply</button>
+    </form>
+  {% endif %}
 
   {% if rows %}
-    <ul class="ticket-list">{% for ticket in rows %}{{ ticket_card(ticket, clock=sla_ctx.headline(ticket)) }}{% endfor %}</ul>
+    <ul class="ticket-list">{% for ticket in rows %}{{ ticket_card(ticket, clock=sla_ctx.headline(ticket), pick=staff|length > 0) }}{% endfor %}</ul>
     {% if pages > 1 %}
       <nav class="pager" aria-label="Pages">
         {% if page > 1 %}<a class="button button-small button-quiet" href="{{ url_for('tickets.queue', tab=tab, q=q or none, category=category or none, priority=priority or none, page=page - 1) }}">Newer</a>{% endif %}

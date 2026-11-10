@@ -42,6 +42,7 @@
     {{ who }} added the category {{ event.new_value }}
   {%- elif event.verb == 'category_changed' -%}
     {%- if event.field == 'name' -%}{{ who }} renamed the category {{ event.old_value }} to {{ event.new_value }}
+    {%- elif event.field == 'auto_assign' -%}{{ who }} turned auto-assign {{ 'on' if event.new_value == 'yes' else 'off' }} for {{ event.note }}
     {%- else -%}{{ who }} {{ 'showed' if event.new_value == 'yes' else 'hid' }} the category {{ event.note }}{%- endif -%}
   {%- elif event.verb == 'escalated' -%}
     {{ who }} escalated it{{ on }} to the Team Leads{% if event.note %}: {{ event.note.rstrip('.') }}{% endif %}
@@ -55,6 +56,16 @@
     {{ who }} added the holiday {{ event.note }} on {{ event.new_value }}
   {%- elif event.verb == 'holiday_removed' -%}
     {{ who }} removed the holiday {{ event.note }} on {{ event.old_value }}
+  {%- elif event.verb == 'merged' -%}
+    {{ who }} merged it{{ on }} into {{ event.new_value }}
+  {%- elif event.verb == 'merged_here' -%}
+    {{ who }} merged {{ event.old_value }} into this ticket
+  {%- elif event.verb == 'reply_saved' -%}
+    {{ who }} added the saved reply {{ event.new_value }}
+  {%- elif event.verb == 'reply_changed' -%}
+    {{ who }} changed the saved reply {{ event.new_value }}
+  {%- elif event.verb == 'reply_removed' -%}
+    {{ who }} deleted the saved reply {{ event.old_value }}
   {%- else -%}
     {{ who }}: {{ event.verb }}{{ on }}
   {%- endif -%}

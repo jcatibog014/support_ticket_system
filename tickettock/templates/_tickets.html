@@ -14,8 +14,13 @@
 {% endmacro %}
 
 {# One ticket as a stub card: the details on the left, a dashed tear line, then the stub with the status. #}
-{% macro ticket_card(ticket, staff_view=True, clock=None) %}
-  <li class="ticket-stub status-{{ ticket.status }}">
+{% macro ticket_card(ticket, staff_view=True, clock=None, pick=False) %}
+  <li class="ticket-stub status-{{ ticket.status }}{% if pick %} has-pick{% endif %}">
+    {% if pick %}
+      {# Belongs to the bulk form above the list (form="bulk"), and sits over the card's link. #}
+      <label class="stub-pick"><input type="checkbox" name="ticket" value="{{ ticket.number }}" form="bulk" data-bulk-pick>
+        <span class="visually-hidden">Choose {{ ticket.key }}</span></label>
+    {% endif %}
     <div class="stub-main">
       <p class="stub-top"><span class="ticket-key">{{ ticket.key }}</span>
         {% if ticket.category %}<span class="stub-category">{{ ticket.category.name }}</span>{% endif %}</p>

@@ -26,6 +26,12 @@ DESK_TABLE = [
     (can.is_admin,                     [False,  False, False, True]),
     (can.can_manage_staff,             [False,  False, False, True]),
     (can.can_manage_categories,        [False,  False, False, True]),
+    (can.can_manage_hours,             [False,  False, False, True]),
+    (can.can_view_audit_log,           [False,  False, True,  True]),
+    (can.can_export_audit_log,         [False,  False, False, True]),
+    (can.can_use_saved_replies,        [False,  True,  True,  True]),
+    (can.can_manage_saved_replies,     [False,  False, True,  True]),
+    (can.can_bulk_edit,                [False,  False, True,  True]),
 ]
 
 

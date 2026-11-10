@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, textarea %}
+{% from "_icons.html" import icon %}
+{% block title %}Saved Replies - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% set manage = can.can_manage_saved_replies(g.user) %}
+  <div class="page-head">
+    <div>
+      <h1>Saved Replies</h1>
+      <p class="lead">Answers the team gives often. Pick one under the reply box on any ticket.
+        {% for key, meaning in placeholders.items() %}<code>{{ key }}</code> becomes {{ meaning }}{{ ',' if not loop.last else '.' }} {% endfor %}</p>
+    </div>
+  </div>
+
+  {% if replies %}
+    <ul class="reply-list">
+      {% for reply in replies %}
+        <li class="card saved-reply">
+          {% if manage %}
+            <details>
+              <summary><strong>{{ reply.title }}</strong> <span class="saved-reply-edit">{{ icon('pencil', 14) }} Edit</span></summary>
+              <form method="post" action="{{ url_for('tools.edit_saved_reply', reply_id=reply.id) }}" class="stack section-gap">
+                {{ csrf() }}
+                {{ field('title', 'Title', reply.title, attrs='required maxlength="80"') }}
+                {{ textarea('body', 'Reply', reply.body, rows=5, attrs='required maxlength="5000"') }}
+                <div class="form-actions">
+                  <button class="button button-danger spacer" type="submit" name="action" value="delete" formnovalidate>Delete</button>
+                  <button class="button" type="submit">Save reply</button>
+                </div>
+              </form>
+            </details>
+          {% else %}
+            <strong>{{ reply.title }}</strong>
+          {% endif %}
+          <p class="saved-reply-body">{{ reply.body }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty-state">
+      {{ icon('reply', 48) }}
+      <h2>No Saved Replies Yet</h2>
+      <p>{{ 'Add the answers your team types again and again.' if manage else 'A Team Lead can add the answers your team types again and again.' }}</p>
+    </div>
+  {% endif %}
+
+  {% if manage %}
+    <section class="section">
+      <div class="card narrow">
+        <h2 class="card-title">Add a Saved Reply</h2>
+        <form method="post" class="stack">
+          {{ csrf() }}
+          {{ field('title', 'Title', title, errors.title, hint='Only the team sees it', attrs='required maxlength="80"') }}
+          {{ textarea('body', 'Reply', body, errors.body, rows=6, attrs='required maxlength="5000"') }}
+          <div class="form-actions"><button class="button" type="submit">Add saved reply</button></div>
+        </form>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

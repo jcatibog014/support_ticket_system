@@ -5,14 +5,15 @@ it) and asks permissions.py before changing anything (403 if you may not).
 Forms that change a ticket carry the version the page was drawn from: if the
 ticket changed since, the change is refused and the page shows the new state.
 """
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, url_for
+from sqlalchemy import select
 
-from .. import audit, db, desks, sla, tick, tickets, workflow
+from .. import audit, db, desks, sla, tick, tickets, tools, workflow
 from .. import permissions as can
 from ..auth import login_required, require
 from ..dates import utcnow
 from ..models import (CUSTOMER_PRIORITIES, PRIORITIES, PRIORITY_NAMES, RESOLVED, STATUS_NAMES, WAITING, Category,
-                      User)
+                      Ticket, User)
 from ..workflow import MoveNotAllowed, TicketChanged
 
 bp = Blueprint("tickets", __name__)
@@ -118,7 +119,10 @@ def queue():
                            priority=priority, page=page, pages=max(1, -(-total // tickets.PAGE_SIZE)),
                            counts=tickets.tab_counts(s, g.user), tab_titles=tickets.TAB_TITLES,
                            categories=desks.categories(s, g.desk, active_only=False),
-                           priority_names=PRIORITY_NAMES, sla_ctx=sla.Context(s, g.desk, now))
+                           priority_names=PRIORITY_NAMES, sla_ctx=sla.Context(s, g.desk, now),
+                           views=tools.views_for(s, g.user), view_args=tools.view_args,
+                           this_query=tools.clean_query(request.args), bulk_actions=tickets.BULK_ACTIONS,
+                           staff=tickets.staff_on(s, g.desk) if can.can_bulk_edit(g.user) else [])
 
 
 # ---------- One ticket ----------
@@ -128,6 +132,14 @@ def queue():
 def show(number):
     s, ticket = _load(number)
     now = utcnow()
+    looking, replies, draft = [], [], ""
+    if can.is_staff(g.user):
+        tools.seen(s, ticket, g.user, now)
+        s.commit()
+        looking = tools.others_looking(s, ticket, g.user, now)
+        replies = [(reply, tools.fill(reply.body, ticket, g.user)) for reply in tools.saved_replies(s, g.desk)]
+        use = request.args.get("use", type=int)
+        draft = next((text for reply, text in replies if reply.id == use), "")
     moves = [(to, workflow.move_label(ticket, to, not g.user.is_staff))
              for to in workflow.TRANSITIONS[ticket.status] if to != RESOLVED and can.can_move(g.user, ticket, to, now)]
     return render_template(
@@ -140,7 +152,8 @@ def show(number):
         categories=tickets.category_choices(s, g.desk, ticket.category_id),
         priorities=PRIORITIES, priority_names=PRIORITY_NAMES, status_names=STATUS_NAMES,
         history=audit.for_ticket(s, ticket, can.is_staff(g.user)),
-        clocks=sla.Context(s, g.desk, now).clocks(ticket) if can.is_staff(g.user) else (None, None))
+        clocks=sla.Context(s, g.desk, now).clocks(ticket) if can.is_staff(g.user) else (None, None),
+        looking=looking, saved_replies=replies, draft=draft)
 
 
 @bp.post("/tickets/<int:number>/reply")
@@ -289,3 +302,37 @@ def clear_escalation(number):
     if _fresh(ticket) and _save(s, ticket, tick.clear_escalation):
         flash("The escalation is marked as handled.")
     return _back(ticket)
+
+
+@bp.get("/tickets/<int:number>/looking")
+@login_required
+def looking(number):
+    """For app.js: "still here", and who else has the ticket open."""
+    s, ticket = _load(number)
+    require(can.is_staff(g.user), "This is for the support team.")
+    now = utcnow()
+    tools.seen(s, ticket, g.user, now)
+    s.commit()
+    return jsonify(names=[person.name for person in tools.others_looking(s, ticket, g.user, now)])
+
+
+@bp.post("/tickets/<int:number>/merge")
+@login_required
+def merge(number):
+    s, ticket = _load(number)
+    require(can.can_merge(g.user, ticket), "Only a Team Lead or an Admin can merge tickets.")
+    target_number = tickets.parse_key(request.form.get("into", ""))
+    target = s.scalar(select(Ticket).where(Ticket.desk_id == g.desk.id, Ticket.number == target_number))         if target_number is not None else None
+    if target is None or not can.can_merge(g.user, ticket, target):
+        flash("Merge into another open ticket from the same customer, like TT-12.", "error")
+        return _back(ticket)
+    if not _fresh(ticket):
+        return _back(ticket)
+    try:
+        workflow.merge(s, ticket, target, g.user, utcnow())
+        s.commit()
+    except TicketChanged as error:
+        flash(error.message, "error")
+        return _back(ticket)
+    flash(f"{ticket.key} was merged into {target.key}.")
+    return redirect(url_for("tickets.show", number=target.number))

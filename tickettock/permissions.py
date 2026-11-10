@@ -176,3 +176,29 @@ def can_escalate(user, ticket):
 def can_clear_escalation(user, ticket):
     """A Team Lead says "handled"."""
     return is_lead(user) and can_view_ticket(user, ticket) and ticket.escalated_at is not None
+
+
+# ---------- Agent tools ----------
+
+def can_use_saved_replies(user):
+    return is_staff(user)
+
+
+def can_manage_saved_replies(user):
+    """The team's shared answers: Team Leads keep them tidy."""
+    return is_lead(user)
+
+
+def can_bulk_edit(user):
+    """Change many tickets at once (assign, priority, close)."""
+    return is_lead(user)
+
+
+def can_merge(user, ticket, target=None):
+    """Merge a duplicate into another ticket from the same customer. Team Leads and Admins."""
+    if not (is_lead(user) and can_view_ticket(user, ticket)) or ticket.status in FINISHED:
+        return False
+    if target is None:
+        return True
+    return (can_view_ticket(user, target) and target.id != ticket.id and target.status not in FINISHED
+            and target.customer_id == ticket.customer_id)
