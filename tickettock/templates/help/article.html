@@ -3,9 +3,10 @@
 {% from "_icons.html" import icon %}
 {% block title %}{{ article.title }} - {{ APP_NAME }}{% endblock %}
 {% block body_class %}{% if not g.user %}public-layout{% endif %}{% endblock %}
+{% block public_top %}{% if not g.user %}{% include "_public_top.html" %}{% endif %}{% endblock %}
 {% block content %}
-  {% if not g.user %}{% include "_public_top.html" %}{% endif %}
   <a class="back-link" href="{{ url_for('help.index') }}">{{ icon('back', 16) }} Help Articles</a>
+  <div class="article-layout">
   <article class="card help-article">
     <header class="help-head">
       <p class="kicker">{{ article.category.name if article.category else 'General' }}{% if not article.is_published %} &middot; Draft: only the team sees it{% endif %}</p>
@@ -23,10 +24,29 @@
           <button class="button button-small {{ 'button' if my_vote == false else 'button-quiet' }}" type="submit" name="helpful" value="0">No</button>
         </form>
       {% endif %}
-      <p class="muted">Still stuck? <a href="{{ url_for('tickets.new') }}">Send us a ticket</a>.</p>
       {% if can.can_manage_articles(g.user) %}
         <a class="button button-quiet" href="{{ url_for('help.edit', article_id=article.id) }}">{{ icon('pencil', 16) }} Edit article</a>
       {% endif %}
     </footer>
   </article>
+
+  <aside class="side-panel">
+    {% if not (g.user and g.user.is_staff) %}
+      <section class="card stuck-card">
+        <h2>Still Stuck?</h2>
+        <p class="muted small">Send us a ticket and the support team will help.</p>
+        <a class="button button-wide" href="{{ url_for('tickets.new') }}">{{ icon('ticket', 16) }} Send a ticket</a>
+      </section>
+    {% endif %}
+    {% if more %}
+      <section class="card">
+        <h2>{{ 'More in ' ~ article.category.name if article.category and same_category else 'More Help Articles' }}</h2>
+        <ul class="more-articles">
+          {% for other in more %}<li><a href="{{ url_for('help.show', article_id=other.id) }}">{{ other.title }}</a></li>{% endfor %}
+        </ul>
+        <p class="small section-gap"><a href="{{ url_for('help.index') }}">All Help Articles</a></p>
+      </section>
+    {% endif %}
+  </aside>
+  </div>
 {% endblock %}

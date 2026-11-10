@@ -3,6 +3,7 @@
 <header class="public-top">
   <a class="logo" href="{{ url_for('auth.login') }}">{{ logo() }} {{ APP_NAME }}</a>
   <nav class="head-actions" aria-label="Account">
+    <a class="public-link" href="{{ url_for('help.index') }}">Help Articles</a>
     <a class="button button-quiet button-small" href="{{ url_for('auth.login') }}">Log in</a>
     <a class="button button-small" href="{{ url_for('auth.signup') }}">Sign up</a>
   </nav>

@@ -49,6 +49,7 @@ PAGES = [
     ("audit-log.png", "/audit", "light", DESKTOP, "lead"),
     ("help.png", "/help", "light", DESKTOP, None),
     ("help-search.png", "/help?q=password", "light", DESKTOP, "customer"),
+    ("help-article.png", "/help?q=refund", "light", DESKTOP, "customer"),  # opens the first result
     ("staff.png", "/admin/staff", "light", DESKTOP, "admin"),
     ("categories.png", "/admin/categories", "light", DESKTOP, "admin"),
     ("time-limits.png", "/admin/hours", "light", DESKTOP, "admin"),
@@ -108,6 +109,9 @@ def main():
                     subject, _, rest = address[1:].partition("}")
                     address = urls[subject] + rest
             page.goto(BASE + address)
+            if name == "help-article.png":
+                page.locator(".article-row a").first.click()
+                page.wait_for_load_state("networkidle")
             if name == "new-ticket.png":
                 page.locator("input[name=subject]").press_sequentially("I forgot my password", delay=30)
                 page.wait_for_timeout(1200)  # the Help Article suggestions
