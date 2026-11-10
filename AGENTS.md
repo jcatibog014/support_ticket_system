@@ -16,7 +16,7 @@ Python 3.13 is at `%LOCALAPPDATA%\Programs\Python\Python313\python.exe`. Use the
 - Test: `.venv\Scripts\python -m pytest`. Every test gets a fresh SQLite file and never uses the internet. Set `TEST_DATABASE_URL` to an **empty** Neon branch to run the same tests on PostgreSQL (each test drops and remakes the tables). SQLAlchemy warnings fail the tests (`pytest.ini`).
 - Other commands: `set-password <email>`, `verify-audit` (checks every desk's history chain), `tick` (runs the timer once).
 - Deploy: `render.yaml` (Render service `ticket-tock`) + Neon; the steps are `docs/DEPLOY.md`.
-- App icon: `docs/make_icons.py` (the logo's ticket and clock, white on the coral tile, into `tickettock/static/icons/`).
+- Logo and app icon: `tickettock/static/icons/logo.svg` is the owner's own drawing (a ticket with a clock and a tick on an orange tile). Pages show it as an `<img>` (`logo()` in `_icons.html`; inline it would clash, its gradients have ids). `docs/make_icons.py` makes every PNG and `favicon.ico` from it (square for iPhone, shrunk to the middle 80% for Android's maskable icon); run it after changing the SVG.
 
 ## Architecture
 
