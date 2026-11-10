@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field %}
+{% from "_icons.html" import icon %}
+{% block title %}Categories - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Categories</h1>
+      <p class="lead">Customers pick one when they send a ticket. Hidden ones stay on old tickets.</p>
+    </div>
+  </div>
+
+  <ul class="category-list">
+    {% for category in categories %}
+      <li class="category-row{% if not category.is_active %} is-off{% endif %}">
+        <form method="post" action="{{ url_for('admin.edit_category', category_id=category.id) }}" class="category-edit">
+          {{ csrf() }}
+          <label class="visually-hidden" for="name-{{ category.id }}">Name</label>
+          <input type="text" id="name-{{ category.id }}" name="name" value="{{ category.name }}" required maxlength="60">
+          <label class="visually-hidden" for="desc-{{ category.id }}">Description</label>
+          <input type="text" id="desc-{{ category.id }}" name="description" value="{{ category.description }}" maxlength="200" placeholder="A short description">
+          <button class="button button-quiet" type="submit">Save</button>
+        </form>
+        <div class="row-tools">
+          {% if not category.is_active %}<span class="badge badge-off">Hidden</span>{% endif %}
+          <form method="post" action="{{ url_for('admin.edit_category', category_id=category.id) }}">
+            {{ csrf() }}
+            <button class="icon-button" type="submit" name="action" value="up" title="Move up"{% if loop.first %} disabled{% endif %}>
+              {{ icon('chevron-up') }}<span class="visually-hidden">Move {{ category.name }} up</span></button>
+            <button class="icon-button" type="submit" name="action" value="down" title="Move down"{% if loop.last %} disabled{% endif %}>
+              {{ icon('chevron-down') }}<span class="visually-hidden">Move {{ category.name }} down</span></button>
+            <button class="button button-quiet" type="submit" name="action" value="{{ 'hide' if category.is_active else 'show' }}">
+              {{ 'Hide' if category.is_active else 'Show' }}</button>
+          </form>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <section class="section">
+    <div class="card narrow">
+      <h2 class="card-title">Add a Category</h2>
+      <form method="post" class="stack">
+        {{ csrf() }}
+        {{ field('name', 'Name', name, errors.name, attrs='required maxlength="60"') }}
+        {{ field('description', 'Description', description, errors.description, hint='Optional', attrs='maxlength="200"') }}
+        <div class="form-actions"><button class="button" type="submit">Add category</button></div>
+      </form>
+    </div>
+  </section>
+{% endblock %}

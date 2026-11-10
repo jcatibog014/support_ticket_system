@@ -1,0 +1,61 @@
+{# Line icons, drawn here so no icon font or outside file is needed. #}
+
+{# The app's mark: a coral ticket with a clock and a tear line. docs/make_icons.py draws the same shape. #}
+{% macro logo(size=30) %}
+  <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 32 32" aria-hidden="true">
+    <path d="M5 7H27a3 3 0 0 1 3 3v3a3 3 0 0 0 0 6v3a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-3a3 3 0 0 0 0-6v-3a3 3 0 0 1 3-3z" fill="#e4572e"></path>
+    <circle cx="13" cy="16" r="5.6" fill="#ffffff"></circle>
+    <path d="M13 12.6V16l2.4 1.5" fill="none" stroke="#e4572e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+    <path d="M23.5 9.5v13" stroke="#ffffff" stroke-width="1.6" stroke-dasharray="1.6 1.9" stroke-linecap="round"></path>
+  </svg>
+{% endmacro %}
+
+{% macro icon(name, size=18) %}
+  <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  {% if name == 'home' %}<path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path>
+  {% elif name == 'ticket' %}<path d="M4 6h16a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a2 2 0 0 0 0-4V7a1 1 0 0 1 1-1z"></path><path d="M15 7v10" stroke-dasharray="2 2"></path>
+  {% elif name == 'queue' %}<path d="M4 6h16M4 12h16M4 18h10"></path>
+  {% elif name == 'inbox' %}<path d="M3 13l3-8h12l3 8v6H3z"></path><path d="M3 13h5l1 3h6l1-3h5"></path>
+  {% elif name == 'staff' %}<circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><circle cx="17" cy="9" r="2.5"></circle><path d="M16.5 14.5A5 5 0 0 1 21.5 19"></path>
+  {% elif name == 'tag' %}<path d="M3 12V4h8l10 10-8 8z"></path><circle cx="7.5" cy="8.5" r="1.3" fill="currentColor"></circle>
+  {% elif name == 'settings' %}<circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path>
+  {% elif name == 'plus' %}<path d="M12 5v14M5 12h14"></path>
+  {% elif name == 'pencil' %}<path d="M4 20l1-4L16 5a2 2 0 0 1 3 3L8 19z"></path><path d="M14 7l3 3"></path>
+  {% elif name == 'trash' %}<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path>
+  {% elif name == 'clock' %}<circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path>
+  {% elif name == 'alarm' %}<circle cx="12" cy="13" r="7"></circle><path d="M12 9.5V13l2 1.5M4 5l3-2M20 5l-3-2"></path>
+  {% elif name == 'comment' %}<path d="M4 5h16v11H9l-5 4z"></path>
+  {% elif name == 'note' %}<path d="M5 3h10l4 4v14H5z"></path><path d="M15 3v4h4M8 12h8M8 16h5"></path>
+  {% elif name == 'more' %}<circle cx="5" cy="12" r="1.3" fill="currentColor"></circle><circle cx="12" cy="12" r="1.3" fill="currentColor"></circle><circle cx="19" cy="12" r="1.3" fill="currentColor"></circle>
+  {% elif name == 'arrow' %}<path d="M5 12h14M13 6l6 6-6 6"></path>
+  {% elif name == 'back' %}<path d="M19 12H5M11 6l-6 6 6 6"></path>
+  {% elif name == 'chevron-up' %}<path d="M6 15l6-6 6 6"></path>
+  {% elif name == 'chevron-down' %}<path d="M6 9l6 6 6-6"></path>
+  {% elif name == 'check' %}<path d="M5 12l5 5 9-10"></path>
+  {% elif name == 'x' %}<path d="M6 6l12 12M18 6L6 18"></path>
+  {% elif name == 'link' %}<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path>
+  {% elif name == 'person' %}<circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path>
+  {% elif name == 'lock' %}<rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+  {% elif name == 'chart' %}<path d="M4 20V4M4 20h16"></path><rect x="7" y="12" width="3" height="5"></rect><rect x="12" y="8" width="3" height="9"></rect><rect x="17" y="5" width="3" height="12"></rect>
+  {% elif name == 'search' %}<circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path>
+  {% elif name == 'book' %}<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5M8 7h7"></path>
+  {% elif name == 'shield' %}<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"></path><path d="M9 12l2 2 4-4"></path>
+  {% elif name == 'history' %}<path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5M12 7v5l3 2"></path>
+  {% elif name == 'reply' %}<path d="M10 8L4 13l6 5"></path><path d="M4 13h10a6 6 0 0 1 6 6"></path>
+  {% elif name == 'paperclip' %}<path d="M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7"></path>
+  {% elif name == 'star' %}<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"></path>
+  {% elif name == 'merge' %}<circle cx="6" cy="5" r="2"></circle><circle cx="6" cy="19" r="2"></circle><circle cx="18" cy="12" r="2"></circle><path d="M6 7v10M6 7c0 4 4 5 10 5"></path>
+  {% elif name == 'eye' %}<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle>
+  {% elif name == 'alert' %}<path d="M12 3l10 18H2z"></path><path d="M12 10v4M12 17.5v.5"></path>
+  {% elif name == 'download' %}<path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path>
+  {% elif name == 'bolt' %}<path d="M13 2L4 14h7l-1 8 9-12h-7z"></path>
+  {% elif name == 'filter' %}<path d="M3 5h18l-7 8v6l-4 2v-8z"></path>
+  {% elif name == 'empty' %}<path d="M4 6h16a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a2 2 0 0 0 0-4V7a1 1 0 0 1 1-1z"></path><path d="M9 12h6" stroke-dasharray="2 2"></path>
+  {# Priorities: two arrows up for Urgent, one for High, a line for Normal, down for Low. #}
+  {% elif name == 'priority-urgent' %}<path d="M6 13l6-6 6 6"></path><path d="M6 19l6-6 6 6"></path>
+  {% elif name == 'priority-high' %}<path d="M6 15l6-6 6 6"></path>
+  {% elif name == 'priority-normal' %}<path d="M6 10h12M6 14h12"></path>
+  {% elif name == 'priority-low' %}<path d="M6 9l6 6 6-6"></path>
+  {% endif %}
+  </svg>
+{% endmacro %}

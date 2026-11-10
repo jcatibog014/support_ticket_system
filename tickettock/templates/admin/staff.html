@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, avatar, role_badge %}
+{% from "_icons.html" import icon %}
+{% block title %}Staff - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Staff</h1>
+      <p class="lead">{{ plural(staff|length, 'person', 'people') }} on the support team, and {{ plural(customers, 'customer') }}.</p>
+    </div>
+  </div>
+
+  {% if new_link %}
+    <div class="card section-gap">
+      <h2 class="card-title">New Invite Link</h2>
+      <div class="invite-link">
+        <label class="visually-hidden" for="new-link">Invite link</label>
+        <input type="text" id="new-link" value="{{ new_link }}" readonly>
+        <button class="button button-quiet" type="button" data-copy="new-link" hidden>Copy</button>
+      </div>
+      <p class="card-note">Send it to the new team member. It works once, for 7 days.</p>
+    </div>
+  {% endif %}
+
+  <section class="section">
+    <div class="section-head"><h2>Team</h2></div>
+    <ul class="people-list">
+      {% for person in staff %}
+        <li class="person-row{% if not person.is_active %} is-off{% endif %}">
+          <span class="person">{{ avatar(person) }}</span>
+          <span class="person-name"><strong>{{ person.name }}</strong>{% if person.id == g.user.id %} <span class="muted">(you)</span>{% endif %}
+            <small>{{ person.email }}</small></span>
+          {% if not person.is_active %}<span class="badge badge-off">Switched off</span>{% endif %}
+          {% if can.can_change_role(g.user, person) %}
+            <form method="post" action="{{ url_for('admin.change_role', user_id=person.id) }}">
+              {{ csrf() }}
+              <label class="visually-hidden" for="role-{{ person.id }}">Role of {{ person.name }}</label>
+              <select name="role" id="role-{{ person.id }}" data-auto-submit>
+                {% for role in roles %}<option value="{{ role }}"{% if role == person.role %} selected{% endif %}>{{ role_names[role] }}</option>{% endfor %}
+              </select>
+              <button class="button button-small button-quiet" type="submit" data-auto-submit-button>Save</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.switch', user_id=person.id) }}"
+                  {% if person.is_active %}data-confirm="Switch off {{ person.name }}'s account? They can't log in until you switch it on again."{% endif %}>
+              {{ csrf() }}
+              <input type="hidden" name="active" value="{{ '0' if person.is_active else '1' }}">
+              <button class="button button-small {{ 'button-danger' if person.is_active else 'button-quiet' }}" type="submit">
+                {{ 'Switch off' if person.is_active else 'Switch on' }}</button>
+            </form>
+          {% else %}
+            {{ role_badge(person.role, person.role_name) }}
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Invite Someone</h2>
+    </div>
+    <div class="card">
+      <form method="post" action="{{ url_for('admin.invite') }}" class="stack">
+        {{ csrf() }}
+        <fieldset class="choice-cards">
+          <legend>Their role</legend>
+          <label class="choice-card"><input type="radio" name="role" value="agent" checked>
+            <span><strong>Agent</strong><small>Works the queue: takes tickets, replies, moves their own tickets.</small></span></label>
+          <label class="choice-card"><input type="radio" name="role" value="lead">
+            <span><strong>Team Lead</strong><small>An Agent who can also give any ticket to anyone, and read the Audit Log.</small></span></label>
+          <label class="choice-card"><input type="radio" name="role" value="admin">
+            <span><strong>Admin</strong><small>Everything, plus staff, categories and desk settings.</small></span></label>
+        </fieldset>
+        <div class="form-actions"><button class="button" type="submit">{{ icon('link') }} Make invite link</button></div>
+      </form>
+    </div>
+    {% if invites %}
+      <h3 class="section-gap">Links Not Used Yet</h3>
+      <ul class="people-list section-gap">
+        {% for invite in invites %}
+          <li class="person-row">
+            <span class="person-name">{{ role_badge(invite.role, invite.role_name) }}
+              <small>Made {{ invite.created_at|ago }}{% if invite.created_by %} by {{ invite.created_by.name }}{% endif %} &middot; works until {{ invite.expires_at|nice_date }}</small></span>
+            <form method="post" action="{{ url_for('admin.cancel_invite', invite_id=invite.id) }}">
+              {{ csrf() }}
+              <button class="button button-small button-quiet" type="submit">Cancel link</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+{% endblock %}

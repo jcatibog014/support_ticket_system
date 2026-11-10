@@ -1,0 +1,47 @@
+{% from "_icons.html" import logo, icon %}
+{% from "_macros.html" import avatar, csrf %}
+{% set page = request.endpoint or '' %}
+{% macro link(endpoint, label, icon_name, active=None, count=None, quiet=False) %}
+  {% set is_here = active if active is not none else page == endpoint %}
+  <li><a href="{{ url_for(endpoint) }}"{% if is_here %} aria-current="page"{% endif %}>{{ icon(icon_name) }} {{ label }}
+    {% if count %}<span class="count{% if quiet %} count-quiet{% endif %}">{{ count }}</span>{% endif %}</a></li>
+{% endmacro %}
+<aside class="sidebar">
+  <div class="sidebar-top">
+    <a class="logo" href="{{ url_for('main.home') }}">{{ logo() }} {{ APP_NAME }}</a>
+    <button class="menu-button" type="button" data-menu-button aria-expanded="false" aria-controls="side-nav" hidden>
+      <span aria-hidden="true">&#9776;</span> Menu
+    </button>
+  </div>
+  <div class="sidebar-menu" id="side-nav">
+    <nav aria-label="Main">
+      <ul class="side-links">
+        {{ link('main.home', 'Home', 'home') }}
+      </ul>
+      {% if can.is_admin(g.user) %}
+        <p class="side-label">Admin</p>
+        <ul class="side-links">
+          {{ link('admin.staff', 'Staff', 'staff') }}
+          {{ link('admin.categories', 'Categories', 'tag') }}
+        </ul>
+      {% endif %}
+    </nav>
+    <div class="sidebar-foot">
+      {# <details> opens and closes without JavaScript. app.js also closes it on an outside click. #}
+      <details class="user-menu" data-popover>
+        <summary>
+          {{ avatar(g.user) }}
+          <span class="user-menu-name"><span><span class="visually-hidden">Account menu for </span>{{ g.user.name }}</span>
+            <small>{{ g.user.role_name }}</small></span>
+        </summary>
+        <div class="user-menu-items">
+          <a href="{{ url_for('auth.settings') }}">Settings</a>
+          <form method="post" action="{{ url_for('auth.logout') }}">
+            {{ csrf() }}
+            <button type="submit">Log out</button>
+          </form>
+        </div>
+      </details>
+    </div>
+  </div>
+</aside>

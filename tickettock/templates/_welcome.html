@@ -1,0 +1,7 @@
+{% from "_icons.html" import logo %}
+{# The panel beside the login and sign-up cards. Its right edge is a row of perforation holes. #}
+<section class="welcome-panel">
+  <a class="logo" href="{{ url_for('auth.login') }}">{{ logo(64) }} {{ APP_NAME }}</a>
+  <p class="welcome-line">Every ticket, on time.</p>
+  <p class="welcome-note">Tell us what went wrong. Our support team picks it up, keeps you posted, and closes it when it's fixed.</p>
+</section>

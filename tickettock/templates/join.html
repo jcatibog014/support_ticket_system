@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, role_badge %}
+{% block title %}Join the Team - {{ APP_NAME }}{% endblock %}
+{% block body_class %}welcome-layout{% endblock %}
+{% block layout_class %}{% endblock %}
+{% block sidebar %}{% endblock %}
+{% block notes %}{% endblock %}
+{% block content %}
+  <div class="welcome">
+    {% include "_welcome.html" %}
+    <section class="welcome-cards">
+      <div class="card">
+        {% if invite is none %}
+          <h1>This Link Doesn't Work</h1>
+          <p class="muted">Invite links work once, for 7 days. Ask your Admin for a new one.</p>
+          <p class="card-note"><a href="{{ url_for('auth.login') }}">Go to log in</a></p>
+        {% elif logged_in %}
+          <h1>Join the Team</h1>
+          <p class="muted">You are logged in as {{ g.user.name }}. Log out first, then open this link again to make your staff account.</p>
+          <form method="post" action="{{ url_for('auth.logout') }}" class="section-gap">
+            {{ csrf() }}
+            <button class="button button-quiet" type="submit">Log out</button>
+          </form>
+        {% else %}
+          <h1>Join the Team</h1>
+          <p class="join-role">You are invited as {{ role_badge(invite.role, invite.role_name) }}</p>
+          <form method="post" class="stack">
+            {{ csrf() }}
+            {{ field('name', 'Your name', name, errors.name, attrs='autocomplete="name" required autofocus maxlength="80"') }}
+            {{ field('email', 'Work email', email, errors.email, type='email', attrs='autocomplete="email" required') }}
+            {{ field('password', 'Password', '', errors.password, type='password', hint='At least 8 characters', attrs='autocomplete="new-password" required') }}
+            {{ field('confirm_password', 'Password again', type='password', attrs='autocomplete="new-password" required') }}
+            <button class="button" type="submit">Join the team</button>
+          </form>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

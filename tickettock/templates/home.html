@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Home - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head greeting">
+    <div>
+      <h1>Hello, {{ g.user.first_name }}</h1>
+      <p class="lead">You are {{ g.user.role_name }} at {{ g.desk.name }}.</p>
+    </div>
+  </div>
+  <div class="card narrow">
+    <h2 class="card-title">What You Can Do</h2>
+    <ul class="role-intro">
+      {% if g.user.is_staff %}
+        <li>{{ icon('check') }} Take tickets from the queue, reply to customers and move tickets along.</li>
+        {% if can.is_lead(g.user) %}<li>{{ icon('check') }} Give any ticket to anyone on the team.</li>{% endif %}
+        {% if can.is_admin(g.user) %}<li>{{ icon('check') }} Invite staff, set their roles, and keep the list of categories.</li>{% endif %}
+      {% else %}
+        <li>{{ icon('check') }} Send us a ticket when something goes wrong.</li>
+        <li>{{ icon('check') }} Follow every ticket you sent, and reply to the support team.</li>
+      {% endif %}
+    </ul>
+  </div>
+{% endblock %}

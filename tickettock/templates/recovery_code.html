@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Your Recovery Code - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="card narrow stack">
+    <h1>Save Your Recovery Code</h1>
+    <p>If you forget your password, this code is the only way back in. Write it down or keep it in a
+      password manager. It is shown only this once.</p>
+    <p class="code-box" aria-label="Your recovery code">{{ code }}</p>
+    <p class="muted small">You can make a new code any time in Settings. The old one then stops working.</p>
+    <div class="form-actions">
+      <a class="button" href="{{ next or url_for('main.home') }}">I saved it, continue</a>
+    </div>
+  </div>
+{% endblock %}

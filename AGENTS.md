@@ -1,0 +1,42 @@
+# AGENTS.md
+
+This file guides AI coding agents (Claude Code, Codex, Cursor, Copilot and others) working in this repository.
+
+## Overview
+
+**Ticket Tock** ("Every ticket, on time."), a support ticket system in Python (Flask). The repo is `support_ticket_system` and the Python package is `tickettock`. Customers send issues; support agents assign, prioritize and resolve them. The plan is `docs/PLAN.md`.
+
+It is a learning project for **authorization, state transitions and audit history**, so those parts stay easy to read: short comments that explain *why*, login written by hand (no Flask-Login), and no extra libraries unless the owner asks for them. Write the README in simple (A1-level) English.
+
+Python 3.13 is at `%LOCALAPPDATA%\Programs\Python\Python313\python.exe`. Use the virtual environment:
+
+- Install: `.venv\Scripts\python -m pip install -r requirements.txt` (create `.venv` with `python -m venv .venv` first if it's missing).
+- First time: `.venv\Scripts\flask --app tickettock upgrade-db` (makes the tables), then `.venv\Scripts\flask --app tickettock create-admin` (makes the desk and its first Admin; run it in a real terminal, it asks for a password).
+- Run: `.venv\Scripts\flask --app tickettock run --debug --port 5010`, then open http://127.0.0.1:5010. (Ports: Swap Meter 5000, Ambon Alert 5001, Ang Gastos! 5002, Sangkap 5003, Gawi 5004, Akda 5005, Hire Wire 5006, Plan-It 5007, ShiroMoto 5008, DFJC 5009.)
+- Test: `.venv\Scripts\python -m pytest`. Every test gets a fresh SQLite file and never uses the internet. Set `TEST_DATABASE_URL` to an **empty** Neon branch to run the same tests on PostgreSQL (each test drops and remakes the tables). SQLAlchemy warnings fail the tests (`pytest.ini`).
+- Other commands: `set-password <email>`.
+- App icon: `docs/make_icons.py` (the logo's ticket and clock, white on the coral tile, into `tickettock/static/icons/`).
+
+## Architecture
+
+- **`tickettock/permissions.py` holds EVERY rule about roles**, as plain functions of users (and tickets). Views and templates (`can.can_manage_staff(g.user)`) ask these and never compare roles themselves. `tests/test_permissions.py` is a table of every role against every action. **Add new rules there, with a table row.**
+  - **Four roles, stored on the user:** Customer (signs up), Agent, Team Lead, Admin (staff join with a one-time invite link from an Admin, `invites.py`; the first Admin comes from `create-admin`).
+  - An Admin changes other staff members' roles, never their own (so a desk can't lose its last Admin by mistake). Changing a role or switching an account off adds 1 to `session_version`, which logs that person out at once.
+  - **404 or 403:** a row from another desk, or a ticket a customer doesn't own, is 404, so it never leaks; an action you may not do on something you can see is 403 (`auth.require()`).
+- **Desks:** every row belongs to a desk (`desk_id`). There is one real desk; each Try Demo makes its own. `desks.get_in_desk()` loads a row by id and gives 404 for another desk's row. Desks and users use `sqlite_autoincrement`, so a deleted demo's ids are never handed out again.
+- **Login:** `auth.py`. Customers log in with their email. Hashes from Werkzeug, 5 wrong passwords (or recovery codes) = 15-minute lock, `load_user()` checks `session_version` on every request. CSRF: every POST needs `csrf_token` (`{{ csrf() }}` from `_macros.html`; JS sends it as the `X-CSRF-Token` header; tests use `post()` from `conftest.py`). No email is needed: sign-up shows a **recovery code** once (`/recovery-code`), stored as a hash; `/forgot` uses it to set a new password and then gives a new code.
+- **Database:** SQLAlchemy 2.0 ORM (typed `Mapped[...]`), plain (not Flask-SQLAlchemy). `tickettock/db.py` makes one engine per app and one session per request: `db.session()`. Nothing is saved without `.commit()`. `expire_on_commit=False`. SQLite locally (`instance/tickettock.sqlite`, git-ignored; foreign keys on per connection), PostgreSQL (Neon, psycopg 3) when `DATABASE_URL` is set. Keep code portable: no dialect-only SQL. Times are naive UTC (`dates.utcnow()`); people see Philippine time (`dates.to_local()`, the filters in `formatting.py`).
+- **Migrations: Alembic**, in `tickettock/migrations/`. `flask --app tickettock upgrade-db` runs them (with SQLite's foreign keys switched off during the run, so a table rebuild can't cascade-delete rows); Render runs it before gunicorn.
+  - **To change the schema:** edit `models.py`, then `.venv\Scripts\alembic revision --autogenerate -m "what changed" --rev-id 000N`, **read the new file and fix it**, and commit it. Never edit a migration that has run on the live site. `tests/test_migrations.py` fails if the models and the migrations disagree.
+- **Every page works without JavaScript.** `app.js` only adds extras. Use `.no-js-only` for fallbacks. The CSP (`__init__.py`) has no inline scripts or styles, so **never use `style=""` or inline `<script>`**: sizes and colours are classes.
+
+## UI rules (the owner's priority is neatness)
+
+- **Look: Ticket stub.** Warm cream paper (`--bg`), navy ink (`--text`, `--sidebar`), one coral accent like a rubber stamp (`--accent` for buttons, `--accent-bright` for the logo). The login panel's edge is a row of perforation holes. Every ticket status is a small stamp (`.stamp .status-*`, colours `--new`, `--open`, `--in_progress`, `--waiting`, `--resolved`, `--closed`, `--cancelled`; all 4.5:1 on white). Bricolage Grotesque for headings, Inter for text, self-hosted in `static/fonts/`. Dark mode is defined twice in `style.css` (device setting + the choice in Settings); change both blocks together.
+- **Settings holds the controls, and the menus only navigate.** The theme (Device, Light or Dark, saved per device in `localStorage`; `theme.js` applies it before the page draws) is only on `/settings`. Log out is there too, and in the account menu at the bottom of the sidebar.
+- **No decorative emoji.** Icons are the line SVGs in `_icons.html`.
+- **Title Case** for the menu, page titles (`h1`), section headings, tabs, empty-state titles and anything that names a page ("My Tickets", "Audit Log"). Small words (a, an, the, and, or, of, in, on, to, for, with, as, at, by) stay lowercase unless first. **Sentence case** for everything else: action buttons ("Send ticket", "Save reply"), labels, hints, messages. The main button of a page is last on the right.
+- Controls are the same height (`--control-height`) with bottoms aligned. Sizes in `rem`; the root font steps up at 1600 / 1920 / 2300px.
+- The sidebar shows from 56rem up; below that a ☰ button opens it.
+- **Every PR must keep the README's pictures up to date (the owner's standing rule).** In a PR description, link pictures with a full `raw.githubusercontent.com` address.
+- Commit messages and PR bodies go through files (`git commit -F`, `gh pr create --body-file`): PowerShell 5.1 breaks quotes in arguments.
