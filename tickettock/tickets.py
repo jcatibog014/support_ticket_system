@@ -22,7 +22,8 @@ BODY_MAX = 5000
 PAGE_SIZE = 50
 
 # The staff queue's tabs: (key, title, a WHERE for it).
-QUEUE_TABS = ("unassigned", "mine", "overdue", "open", "waiting", "resolved", "closed")
+# In the order a ticket goes: everything open first, then narrower views, the finished ones last.
+QUEUE_TABS = ("open", "unassigned", "mine", "overdue", "waiting", "resolved", "closed")
 TAB_TITLES = {"unassigned": "Unassigned", "mine": "Assigned to Me", "overdue": "Overdue", "open": "All Open",
               "waiting": "Waiting", "resolved": "Resolved", "closed": "Closed"}
 

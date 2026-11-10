@@ -114,9 +114,9 @@ def queue():
     s = db.session()
     now = utcnow()
     tick.run_if_due(s, g.desk, now)
-    tab = request.args.get("tab", "unassigned")
+    tab = request.args.get("tab", "open")  # the first tab
     if tab not in tickets.QUEUE_TABS:
-        tab = "unassigned"
+        tab = "open"
     q = request.args.get("q", "").strip()[:100]
     category = request.args.get("category", "")
     priority = request.args.get("priority", "")
