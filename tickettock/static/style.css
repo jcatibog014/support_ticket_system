@@ -288,14 +288,16 @@ html:not(.js) .sidebar-menu { display: block; }
 .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
 .back-link { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; margin-bottom: 0.5rem; }
 
+/* The line under the tabs is drawn inside the row (an inset shadow), so the current tab's
+   underline can cover it without hanging out of the row: no stray up/down scroll arrows. */
 .tabs {
-  display: flex; gap: 0.25rem; overflow-x: auto; border-bottom: 1px solid var(--border);
+  display: flex; gap: 0.25rem; overflow-x: auto; overflow-y: hidden; box-shadow: inset 0 -1px 0 var(--border);
   margin: -0.25rem 0 1.25rem;
 }
 .tabs a {
   display: inline-flex; align-items: center; gap: 0.375rem;
   padding: 0.5rem 0.875rem; color: var(--muted); font-weight: 600; white-space: nowrap;
-  border-bottom: 2px solid transparent; margin-bottom: -1px; text-decoration: none;
+  border-bottom: 2px solid transparent; text-decoration: none;
 }
 .tabs a:hover { color: var(--text); }
 .tabs a[aria-current="page"] { color: var(--accent-text); border-bottom-color: var(--accent); }

@@ -1,4 +1,6 @@
 """Ticket pages: sending, seeing, replying, assigning, and moving through the workflow."""
+import re
+
 import pytest
 from sqlalchemy import select
 
@@ -95,7 +97,7 @@ def test_queue_tabs_search_and_filters(app, team):
     make_ticket(app, team["customer"], subject="Mine now", assignee_id=team["agent"], status="open")
     make_ticket(app, team["other_customer"], subject="Old one", status="closed")
     client = browser(app, team["agent"])
-    unassigned = page(client, "/queue")
+    unassigned = page(client, "/queue?tab=unassigned")
     assert "Refund please" in unassigned and "Mine now" not in unassigned
     assert "Mine now" in page(client, "/queue?tab=mine")
     assert "Old one" in page(client, "/queue?tab=closed")
@@ -316,3 +318,17 @@ def test_internal_messages_never_reach_the_customer(app, team):
         assert s.scalar(select(Message.is_internal)) is True
     assert "seems confused" not in page(browser(app, team["customer"]), f"/tickets/{number}")
     assert "seems confused" in page(browser(app, team["agent"]), f"/tickets/{number}")
+
+
+def test_the_tab_for_your_own_tickets_is_called_assigned_to_me(app, team):
+    agent = browser(app, team["agent"])
+    assert "Assigned to Me" in page(agent, "/queue")
+    assert "Assigned to Me" in page(agent, "/")
+
+
+def test_queue_tabs_follow_the_workflow_and_open_on_all_open(app, team):
+    text = page(browser(app, team["agent"]), "/queue")
+    order = [text.index(name) for name in ("All Open", "Unassigned", "Assigned to Me", "Overdue", "Waiting",
+                                           "Resolved", "Closed")]
+    assert order == sorted(order)
+    assert re.search(r'aria-current="page">\s*All Open', text)  # the tab it opens on
