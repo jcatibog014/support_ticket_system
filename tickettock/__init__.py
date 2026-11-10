@@ -51,7 +51,7 @@ def create_app(test_config=None):
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=on_render,
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
-        MAX_CONTENT_LENGTH=1024 * 1024,  # forms only for now
+        MAX_CONTENT_LENGTH=16 * 1024 * 1024,  # up to 3 pictures of 5 MB with a reply
         # Optional Gmail (an app password): Inbox notices are also emailed.
         MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
         MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
@@ -71,14 +71,15 @@ def create_app(test_config=None):
         # Without it we'd use a SQLite file, and Render forgets files on every restart.
         raise RuntimeError("Set the DATABASE_URL environment variable on Render (Neon's connection string).")
 
-    from . import auth, db, formatting, tick
-    from .views import admin, audit as audit_views, inbox, main, tickets, tools as tool_views
+    from . import auth, db, formatting, render, tick
+    from .views import admin, audit as audit_views, help as help_views, inbox, main, tickets, tools as tool_views
 
     db.init_app(app)
     auth.init_app(app)
     formatting.init_app(app)
+    render.init_app(app)
     # auth comes first: its before_request (load_user) must run before the others'.
-    for blueprint in (auth.bp, main.bp, tickets.bp, inbox.bp, audit_views.bp, admin.bp, tick.bp, tool_views.bp):
+    for blueprint in (auth.bp, main.bp, tickets.bp, inbox.bp, audit_views.bp, admin.bp, tick.bp, tool_views.bp, help_views.bp):
         app.register_blueprint(blueprint)
 
     audit_views.init_app(app)

@@ -43,6 +43,9 @@ ESCALATED, DE_ESCALATED = "escalated", "de_escalated"
 # Agent tools:
 MERGED, MERGED_HERE = "merged", "merged_here"
 REPLY_SAVED, REPLY_CHANGED, REPLY_REMOVED = "reply_saved", "reply_changed", "reply_removed"
+# Customer extras:
+RATED, ATTACHED = "rated", "attached"
+ARTICLE_ADDED, ARTICLE_CHANGED, ARTICLE_REMOVED = "article_added", "article_changed", "article_removed"
 
 LIMITS = {"actor_name": 80, "verb": 30, "field": 30, "old_value": 200, "new_value": 200, "note": 300}
 
@@ -114,7 +117,9 @@ GROUPS = {
     "escalations": ("Escalations", (ESCALATED, DE_ESCALATED)),
     "assign": ("Assignments", (ASSIGNED,)),
     "triage": ("Priority and category", (PRIORITY, CATEGORY)),
-    "talk": ("Replies and notes", (REPLIED, NOTED)),
+    "talk": ("Replies, notes and pictures", (REPLIED, NOTED, ATTACHED)),
+    "ratings": ("Ratings", (RATED,)),
+    "help": ("Help Articles", (ARTICLE_ADDED, ARTICLE_CHANGED, ARTICLE_REMOVED)),
     "people": ("Staff and roles", (ROLE_CHANGED, SWITCHED_OFF, SWITCHED_ON, INVITE_MADE, INVITE_CANCELLED, JOINED)),
     "settings": ("Desk settings", (CATEGORY_ADDED, CATEGORY_CHANGED, HOURS_CHANGED, SLA_CHANGED, HOLIDAY_ADDED,
                                    HOLIDAY_REMOVED, REPLY_SAVED, REPLY_CHANGED, REPLY_REMOVED)),

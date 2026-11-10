@@ -15,6 +15,16 @@ CSRF = "test-csrf-token"
 PASSWORD = "correct horse"
 
 
+@pytest.fixture(autouse=True)
+def fast_passwords(monkeypatch):
+    """The real password hash is slow on purpose (to slow down guessing). Tests make
+    hundreds of users, so they use a quick setting of the same kind of hash."""
+    from functools import partial
+
+    from werkzeug.security import generate_password_hash
+    monkeypatch.setattr(auth, "generate_password_hash", partial(generate_password_hash, method="pbkdf2:sha256:1000"))
+
+
 @pytest.fixture
 def app(tmp_path):
     app = create_app({

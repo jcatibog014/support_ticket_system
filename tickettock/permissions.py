@@ -202,3 +202,35 @@ def can_merge(user, ticket, target=None):
         return True
     return (can_view_ticket(user, target) and target.id != ticket.id and target.status not in FINISHED
             and target.customer_id == ticket.customer_id)
+
+
+# ---------- Customer extras ----------
+
+def can_view_article(user, article):
+    """Published articles are for everyone, even before logging in; drafts are for the team."""
+    return article.is_published or (is_staff(user) and user.desk_id == article.desk_id)
+
+
+def can_manage_articles(user):
+    """Write, edit, publish and delete Help Articles."""
+    return is_lead(user)
+
+
+def can_vote_article(user, article):
+    return _active(user) and article.is_published and article.desk_id == user.desk_id
+
+
+def can_attach(user, ticket, now=None):
+    """Add pictures: whoever can reply or add a note."""
+    return can_reply(user, ticket, now) or can_add_note(user, ticket)
+
+
+def can_view_attachment(user, ticket, attachment):
+    """Pictures on internal notes are for the team, like the notes."""
+    return can_view_ticket(user, ticket) and (not attachment.is_internal or is_staff(user))
+
+
+def can_rate(user, ticket):
+    """The customer rates the help once, after it is solved (not a merged duplicate)."""
+    return (_active(user) and _owns(user, ticket) and ticket.status in (RESOLVED, CLOSED)
+            and ticket.rating is None and ticket.merged_into_id is None)

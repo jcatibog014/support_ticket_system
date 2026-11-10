@@ -5,15 +5,15 @@ it) and asks permissions.py before changing anything (403 if you may not).
 Forms that change a ticket carry the version the page was drawn from: if the
 ticket changed since, the change is refused and the page shows the new state.
 """
-from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, g, jsonify, redirect, render_template, request, url_for
 from sqlalchemy import select
 
-from .. import audit, db, desks, sla, tick, tickets, tools, workflow
+from .. import audit, db, desks, help as articles, notify, photos, sla, tick, tickets, tools, workflow
 from .. import permissions as can
 from ..auth import login_required, require
 from ..dates import utcnow
 from ..models import (CUSTOMER_PRIORITIES, PRIORITIES, PRIORITY_NAMES, RESOLVED, STATUS_NAMES, WAITING, Category,
-                      Ticket, User)
+                      Attachment, Ticket, User)
 from ..workflow import MoveNotAllowed, TicketChanged
 
 bp = Blueprint("tickets", __name__)
@@ -80,14 +80,29 @@ def new():
             category = next((c for c in categories if str(c.id) == form["category"]), None)
             if category is None:
                 errors["category"] = "Choose a category from the list."
+        try:
+            chosen = photos.uploads(request.files)
+        except photos.PhotoProblem as problem:
+            errors["pictures"] = str(problem)
         if not errors:
-            ticket = tickets.create(s, g.user, form["subject"], form["description"], utcnow(),
+            now = utcnow()
+            ticket = tickets.create(s, g.user, form["subject"], form["description"], now,
                                     category=category, priority=form["priority"])
-            s.commit()
-            flash(f"Thank you! Your ticket is {ticket.key}. We'll reply here, so check back soon.")
-            return redirect(url_for("tickets.show", number=ticket.number))
-    return render_template("tickets/new.html", categories=categories, errors=errors, form=form), \
-        400 if errors else 200
+            try:
+                for upload in chosen:
+                    s.add(photos.make(ticket, g.user, upload, now))
+            except photos.PhotoProblem as problem:
+                s.rollback()
+                errors["pictures"] = str(problem)
+            else:
+                if chosen:
+                    audit.log(s, ticket.desk_id, g.user, audit.ATTACHED, now, ticket=ticket, new=str(len(chosen)))
+                s.commit()
+                flash(f"Thank you! Your ticket is {ticket.key}. We'll reply here, so check back soon.")
+                return redirect(url_for("tickets.show", number=ticket.number))
+    suggested = articles.suggest(s, g.user, g.desk, form["subject"]) if form["subject"] else []
+    return render_template("tickets/new.html", categories=categories, errors=errors, form=form,
+                           suggested=suggested, max_files=photos.MAX_FILES), 400 if errors else 200
 
 
 # ---------- Staff ----------
@@ -153,7 +168,9 @@ def show(number):
         priorities=PRIORITIES, priority_names=PRIORITY_NAMES, status_names=STATUS_NAMES,
         history=audit.for_ticket(s, ticket, can.is_staff(g.user)),
         clocks=sla.Context(s, g.desk, now).clocks(ticket) if can.is_staff(g.user) else (None, None),
-        looking=looking, saved_replies=replies, draft=draft)
+        looking=looking, saved_replies=replies, draft=draft, pictures=_pictures(s, ticket),
+        can_attach=can.can_attach(g.user, ticket, now), max_files=photos.MAX_FILES,
+        suggested=articles.suggest(s, g.user, g.desk, ticket.subject) if not can.is_staff(g.user) and ticket.is_active else [])
 
 
 @bp.post("/tickets/<int:number>/reply")
@@ -174,10 +191,21 @@ def reply(number):
         abort(400, f"Keep a reply under {tickets.BODY_MAX} characters.")
     then_wait = request.form.get("then") == "waiting" and not internal
     try:
-        tickets.reply(s, ticket, g.user, body, now, internal=internal)
+        chosen = photos.uploads(request.files)
+        message = tickets.reply(s, ticket, g.user, body, now, internal=internal)
+        if chosen:
+            s.flush()
+            for upload in chosen:
+                s.add(photos.make(ticket, g.user, upload, now, message=message, internal=internal))
+            audit.log(s, ticket.desk_id, g.user, audit.ATTACHED, now, ticket=ticket, new=str(len(chosen)),
+                      internal=internal)
         if then_wait and can.can_move(g.user, ticket, WAITING, now) and not workflow.move_problem(ticket, WAITING):
             workflow.move(s, ticket, WAITING, g.user, now)
         s.commit()
+    except photos.PhotoProblem as problem:
+        s.rollback()
+        flash(f"{problem} Your words weren't sent yet: please send them again.", "error")
+        return _back(ticket, "reply")
     except TicketChanged as error:
         s.rollback()
         flash(error.message, "error")
@@ -336,3 +364,57 @@ def merge(number):
         return _back(ticket)
     flash(f"{ticket.key} was merged into {target.key}.")
     return redirect(url_for("tickets.show", number=target.number))
+
+
+# ---------- Pictures ----------
+
+def _pictures(s, ticket):
+    """{message id (None = the ticket itself): [attachments]} that this person may see."""
+    rows = s.scalars(select(Attachment).where(Attachment.ticket_id == ticket.id).order_by(Attachment.id)).all()
+    found = {}
+    for row in rows:
+        if can.can_view_attachment(g.user, ticket, row):
+            found.setdefault(row.message_id, []).append(row)
+    return found
+
+
+@bp.get("/pictures/<int:picture_id>")
+@bp.get("/pictures/<int:picture_id>/small", endpoint="picture_small")
+@login_required
+def picture(picture_id):
+    s = db.session()
+    row = s.get(Attachment, picture_id)
+    ticket = s.get(Ticket, row.ticket_id) if row is not None else None
+    if row is None or ticket is None or not can.can_view_attachment(g.user, ticket, row):
+        abort(404)
+    small = request.endpoint == "tickets.picture_small"
+    response = Response(row.thumb if small else row.data, mimetype="image/webp")
+    # Private: only this person's browser keeps it. Pictures never change, so a day is fine.
+    response.headers["Cache-Control"] = "private, max-age=86400"
+    response.headers["Content-Disposition"] = f'inline; filename="{row.filename}"'
+    return response
+
+
+# ---------- Rating ----------
+
+@bp.post("/tickets/<int:number>/rate")
+@login_required
+def rate(number):
+    s, ticket = _load(number)
+    require(can.can_rate(g.user, ticket), "You can rate a ticket once, after it is solved.")
+    stars = request.form.get("stars", type=int)
+    if stars not in (1, 2, 3, 4, 5):
+        flash("Choose from 1 to 5 stars.", "error")
+        return _back(ticket, "rate")
+    comment = request.form.get("comment", "").strip()[:500]
+    now = utcnow()
+    try:
+        workflow.apply(s, ticket, now, rating=stars, rating_comment=comment, rated_at=now)
+    except TicketChanged as error:
+        flash(error.message, "error")
+        return _back(ticket)
+    audit.log(s, ticket.desk_id, g.user, audit.RATED, now, ticket=ticket, field="rating", new=str(stars), note=comment)
+    notify.send(s, ticket.assignee, ticket, "rated", g.user, now, f"{stars} out of 5")
+    s.commit()
+    flash("Thank you for rating our help!")
+    return _back(ticket)

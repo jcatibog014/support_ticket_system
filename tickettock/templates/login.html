@@ -25,6 +25,7 @@
         <p class="card-note">Need help? <a href="{{ url_for('auth.signup', next=next or none) }}">Sign up</a> to send us a ticket
           &middot; <a href="{{ url_for('auth.forgot') }}">Forgot your password?</a></p>
       </div>
+      <p class="welcome-help"><a href="{{ url_for('help.index') }}">Browse the Help Articles</a> without logging in.</p>
     </section>
   </div>
 {% endblock %}

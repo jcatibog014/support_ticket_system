@@ -6,8 +6,10 @@
       ├──< sla_rules            (time limits per priority: first reply, solved)
       ├──< holidays             (days the clock doesn't run)
       ├──< saved_replies        (answers the team uses again and again)
+      ├──< articles             (Help Articles customers read before, or instead of, sending a ticket)
       ├──< tickets ── customer_id, assignee_id ──> users
       │      ├──< messages      (the conversation: the customer's and the team's replies)
+      │      ├──< attachments   (pictures added to the ticket or a reply, as small WebP files)
       │      └──< ticket_views  (who on the team has the ticket open right now)
       ├──< audit_events         (the history: append-only, each row chained to the one before)
       ├──< notifications ── user_id ──> users   (someone's Inbox, and the emails it sends)
@@ -23,7 +25,8 @@ What each role may do is in permissions.py, and only there.
 """
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, LargeBinary, String, Text,
+                        UniqueConstraint)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .dates import utcnow
@@ -220,6 +223,10 @@ class Ticket(Base):
     # Escalated: a Team Lead was called in (late, or an Agent asked for help).
     escalated_at: Mapped[datetime | None] = mapped_column(DateTime)
     escalation_reason: Mapped[str] = mapped_column(String(300), default="")
+    # The customer's rating once it is solved: 1 to 5 stars, and a few words.
+    rating: Mapped[int | None] = mapped_column(Integer)
+    rating_comment: Mapped[str] = mapped_column(String(500), default="")
+    rated_at: Mapped[datetime | None] = mapped_column(DateTime)
     # A duplicate is closed and points at the ticket it was merged into.
     merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("tickets.id", ondelete="SET NULL"))
 
@@ -362,6 +369,56 @@ class TicketView(Base):
     seen_at: Mapped[datetime] = mapped_column(DateTime)
 
     user: Mapped[User] = relationship()
+
+
+class Article(Base):
+    """A Help Article, written in Markdown by a Team Lead or an Admin (render.py makes it safe HTML)."""
+    __tablename__ = "articles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    desk_id: Mapped[int] = mapped_column(ForeignKey("desks.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    body: Mapped[str] = mapped_column(Text)
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"))
+    # A draft is only for the team; customers see published articles.
+    is_published: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    views: Mapped[int] = mapped_column(Integer, default=0)
+
+    category: Mapped[Category | None] = relationship()
+    created_by: Mapped[User | None] = relationship()
+
+
+class ArticleVote(Base):
+    """"Was this helpful?": one answer per person per article (they can change it)."""
+    __tablename__ = "article_votes"
+    __table_args__ = (UniqueConstraint("article_id", "user_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    helpful: Mapped[bool] = mapped_column(Boolean)
+
+
+class Attachment(Base):
+    """A picture on a ticket. Stored in the database as a small WebP (photos.py), with
+    no camera details (EXIF), and served only to people who can see the ticket."""
+    __tablename__ = "attachments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), index=True)
+    # None = it came with the ticket itself; else the reply it belongs to.
+    message_id: Mapped[int | None] = mapped_column(ForeignKey("messages.id", ondelete="CASCADE"), index=True)
+    uploader_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    filename: Mapped[str] = mapped_column(String(120))
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    thumb: Mapped[bytes] = mapped_column(LargeBinary)
+    width: Mapped[int] = mapped_column(Integer)
+    height: Mapped[int] = mapped_column(Integer)
+    # On an internal note: the team only.
+    is_internal: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 # What an Inbox notice is about (notify.py writes them, inbox.html turns them into words).

@@ -4,6 +4,17 @@
 {% from "_icons.html" import icon %}
 {% from "_history.html" import timeline %}
 {% set staff_view = g.user.is_staff %}
+{% macro gallery(rows) %}
+  {% if rows %}
+    <ul class="gallery">
+      {% for row in rows %}
+        <li><a href="{{ url_for('tickets.picture', picture_id=row.id) }}" target="_blank" rel="noopener">
+          <img src="{{ url_for('tickets.picture_small', picture_id=row.id) }}" alt="{{ row.filename }}" loading="lazy"
+               width="{{ [row.width, 180]|min }}"></a></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endmacro %}
 {% set version %}<input type="hidden" name="version" value="{{ ticket.version }}">{% endset %}
 {% block title %}{{ ticket.key }} {{ ticket.subject }} - {{ APP_NAME }}{% endblock %}
 {% block content %}
@@ -43,6 +54,7 @@
           <div>
             <p class="message-head"><strong>{{ ticket.customer.name }}</strong> <time datetime="{{ ticket.created_at.isoformat() }}Z">{{ ticket.created_at|nice_datetime }}</time></p>
             <p class="message-body">{{ ticket.description }}</p>
+            {{ gallery(pictures.get(None)) }}
           </div>
         </article>
         {% for message in messages %}
@@ -57,10 +69,39 @@
                 <time datetime="{{ message.created_at.isoformat() }}Z">{{ message.created_at|nice_datetime }}</time>
               </p>
               <p class="message-body">{{ message.body }}</p>
+              {{ gallery(pictures.get(message.id)) }}
             </div>
           </article>
         {% endfor %}
       </section>
+
+      {% if can.can_rate(g.user, ticket) %}
+        <section class="card rate-card" id="rate">
+          <h2 class="card-title">How Did We Do?</h2>
+          <form method="post" action="{{ url_for('tickets.rate', number=ticket.number) }}" class="stack">
+            {{ csrf() }}
+            <fieldset class="stars">
+              <legend class="visually-hidden">Stars</legend>
+              {% for star in range(5, 0, -1) %}
+                <input type="radio" name="stars" value="{{ star }}" id="star-{{ star }}" required>
+                <label for="star-{{ star }}" title="{{ star }} out of 5">{{ icon('star', 28) }}<span class="visually-hidden">{{ star }} out of 5</span></label>
+              {% endfor %}
+            </fieldset>
+            <label class="field"><span class="field-label">Anything to add? <span class="hint">Optional</span></span>
+              <textarea name="comment" rows="2" maxlength="500"></textarea></label>
+            <div class="form-actions"><button class="button" type="submit">Send rating</button></div>
+          </form>
+        </section>
+      {% elif ticket.rating and not staff_view %}
+        <p class="reply-note">You rated our help {{ ticket.rating }} out of 5. Thank you!</p>
+      {% endif %}
+
+      {% if suggested %}
+        <section class="card suggestions-card">
+          <h2 class="card-title">{{ icon('book', 18) }} These Might Help While You Wait</h2>
+          <ul>{% for article in suggested %}<li><a href="{{ url_for('help.show', article_id=article.id) }}">{{ article.title }}</a></li>{% endfor %}</ul>
+        </section>
+      {% endif %}
 
       {% set can_note = can.can_add_note(g.user, ticket) %}
       {% if can_reply or can_note %}
@@ -76,12 +117,17 @@
               <button class="button button-small button-quiet no-js-only" type="submit">Use</button>
             </form>
           {% endif %}
-          <form method="post" action="{{ url_for('tickets.reply', number=ticket.number) }}" class="stack">
+          <form method="post" action="{{ url_for('tickets.reply', number=ticket.number) }}" class="stack" enctype="multipart/form-data">
             {{ csrf() }}
             <label class="field">
               <span class="field-label">{% if not staff_view %}Your reply{% elif can_reply %}Reply to {{ ticket.customer.first_name }}{% else %}Internal note{% endif %}</span>
               <textarea name="body" rows="5" maxlength="5000" required data-reply-body>{{ draft }}</textarea>
             </label>
+            {% if can_attach %}
+              <label class="file-line">{{ icon('paperclip', 16) }} <span class="visually-hidden">Pictures</span>
+                <input type="file" name="pictures" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
+                <span class="hint">Up to {{ max_files }} pictures, 5 MB each</span></label>
+            {% endif %}
             <div class="form-actions">
               {% if can_note and can_reply %}
                 <label class="check-line note-switch spacer"><input type="checkbox" name="internal" value="1">
@@ -167,6 +213,10 @@
           {% if staff_view %}
             <div><dt>Customer</dt><dd><span class="person">{{ avatar(ticket.customer, 'small') }} <span class="person-text">{{ ticket.customer.name }}</span></span>
               <span class="muted small">{{ ticket.customer.email }}</span></dd></div>
+          {% endif %}
+          {% if staff_view and ticket.rating %}
+            <div><dt>Rating</dt><dd><span class="rating" title="{{ ticket.rating }} out of 5">{% for star in range(1, 6) %}<span class="{{ 'on' if star <= ticket.rating else 'off' }}">{{ icon('star', 16) }}</span>{% endfor %}</span>
+              {% if ticket.rating_comment %}<span class="muted small">&ldquo;{{ ticket.rating_comment }}&rdquo;</span>{% endif %}</dd></div>
           {% endif %}
           <div><dt>Last Update</dt><dd>{{ ticket.updated_at|ago }}</dd></div>
         </dl>

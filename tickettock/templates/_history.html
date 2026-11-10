@@ -60,6 +60,16 @@
     {{ who }} merged it{{ on }} into {{ event.new_value }}
   {%- elif event.verb == 'merged_here' -%}
     {{ who }} merged {{ event.old_value }} into this ticket
+  {%- elif event.verb == 'rated' -%}
+    {{ who }} rated the help{{ on }} {{ event.new_value }} out of 5{% if event.note %}: &ldquo;{{ event.note }}&rdquo;{% endif %}
+  {%- elif event.verb == 'attached' -%}
+    {{ who }} added {{ event.new_value }} picture{{ '' if event.new_value == '1' else 's' }}{{ on }}
+  {%- elif event.verb == 'article_added' -%}
+    {{ who }} wrote the Help Article {{ event.new_value }} ({{ event.note }})
+  {%- elif event.verb == 'article_changed' -%}
+    {{ who }} edited the Help Article {{ event.new_value }}{% if event.note %} ({{ event.note }}){% endif %}
+  {%- elif event.verb == 'article_removed' -%}
+    {{ who }} deleted the Help Article {{ event.old_value }}
   {%- elif event.verb == 'reply_saved' -%}
     {{ who }} added the saved reply {{ event.new_value }}
   {%- elif event.verb == 'reply_changed' -%}

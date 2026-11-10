@@ -63,6 +63,52 @@ function setUpConfirm() {
       if (!confirm(form.dataset.confirm)) event.preventDefault();
     });
   });
+  // One button of a form that needs asking first (Delete, beside Save).
+  document.querySelectorAll("button[data-confirm-button]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      if (!confirm(button.dataset.confirmButton)) event.preventDefault();
+    });
+  });
+}
+
+// New Ticket: while the customer types the subject, show Help Articles that might answer it.
+function setUpSuggestions() {
+  const subject = document.querySelector("[data-suggest-url]");
+  const box = document.querySelector("[data-suggestions]");
+  if (!subject || !box) return;
+  const list = box.querySelector("[data-suggestion-list]");
+  let timer = null;
+  let asked = "";
+  const ask = async () => {
+    const words = subject.value.trim();
+    if (words === asked) return;
+    asked = words;
+    if (words.length < 4) {
+      box.hidden = true;
+      return;
+    }
+    try {
+      const url = `${subject.dataset.suggestUrl}?q=${encodeURIComponent(words)}`;
+      const answer = await (await fetch(url, { headers: { Accept: "application/json" } })).json();
+      list.replaceChildren(...answer.articles.map((article) => {
+        const item = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = article.url;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = article.title;  // text, never HTML
+        item.append(link);
+        return item;
+      }));
+      box.hidden = answer.articles.length === 0;
+    } catch (error) {
+      // No suggestions this time; the form still works.
+    }
+  };
+  subject.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(ask, 400);
+  });
 }
 
 // A select that saves itself (a staff member's role, a filter): no Save button needed.
@@ -148,6 +194,7 @@ function setUpBulk() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  setUpSuggestions();
   setUpSavedReplies();
   setUpLooking();
   setUpBulk();
