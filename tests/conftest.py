@@ -118,3 +118,30 @@ def is_logged_in(client):
 def get_user(app, email):
     with app.app_context():
         return db.session().scalar(select(User).where(User.email == email))
+
+
+def make_ticket(app, customer_id, subject="Can't log in", status="new", assignee_id=None, **fields):
+    """A ticket made the real way (tickets.create, so it has a history line), then
+    put straight into a status. Returns its number."""
+    from tickettock import tickets
+    from tickettock.dates import utcnow
+    with app.app_context():
+        s = db.session()
+        customer = s.get(User, customer_id)
+        ticket = tickets.create(s, customer, subject, "It says my password is wrong.", fields.pop("now", utcnow()))
+        ticket.status = status
+        ticket.assignee_id = assignee_id
+        for key, value in fields.items():
+            setattr(ticket, key, value)
+        s.commit()
+        return ticket.number
+
+
+def get_ticket(app, number, desk_id=None):
+    from tickettock.models import Ticket
+    with app.app_context():
+        s = db.session()
+        desk_id = desk_id or desks.main_desk(s).id
+        ticket = s.scalar(select(Ticket).where(Ticket.desk_id == desk_id, Ticket.number == number))
+        ticket.messages  # load them while the session is open
+        return ticket

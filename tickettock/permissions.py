@@ -13,7 +13,15 @@ tests/test_permissions.py can check every rule as a table of role x action.
 
 A switched-off account (is_active False) may do nothing at all.
 """
-from .models import ADMIN, AGENT, LEAD, RANK, STAFF_ROLES
+from datetime import timedelta
+
+from .dates import utcnow
+from .models import (ACTIVE, ADMIN, AGENT, CANCELLED, CLOSED, CUSTOMER, FINISHED, IN_PROGRESS, LEAD, NEW, OPEN, RANK,
+                     RESOLVED, STAFF_ROLES, WAITING)
+
+# A customer can reopen a resolved ticket (or reply to it) for this long.
+# After that it is closed, and a new ticket is the way to go.
+REOPEN_WINDOW = timedelta(days=7)
 
 
 def _active(user):
@@ -62,3 +70,74 @@ def can_switch_off(user, other):
 
 def can_manage_categories(user):
     return is_admin(user)
+
+
+# ---------- Tickets ----------
+
+def _owns(user, ticket):
+    return user.role == CUSTOMER and ticket.customer_id == user.id
+
+
+def _mine(user, ticket):
+    return ticket.assignee_id is not None and ticket.assignee_id == user.id
+
+
+def can_view_ticket(user, ticket):
+    """Staff see every ticket on their desk. A customer sees only their own
+    (anyone else's is "not found", so its number never leaks)."""
+    if not _active(user) or ticket.desk_id != user.desk_id:
+        return False
+    return is_staff(user) or _owns(user, ticket)
+
+
+def reopen_window_open(ticket, now=None):
+    now = now or utcnow()
+    return ticket.status == RESOLVED and ticket.resolved_at is not None and now < ticket.resolved_at + REOPEN_WINDOW
+
+
+def can_reply(user, ticket, now=None):
+    """Public replies. Nobody writes on a closed ticket; a customer can still
+    answer a resolved one for 7 days (which reopens it)."""
+    if not can_view_ticket(user, ticket) or ticket.status in FINISHED:
+        return False
+    if _owns(user, ticket) and ticket.status == RESOLVED:
+        return reopen_window_open(ticket, now)
+    return True
+
+
+def can_take(user, ticket):
+    """"Take it": a staff member gives an unassigned, unfinished ticket to themselves."""
+    return is_staff(user) and can_view_ticket(user, ticket) and ticket.assignee_id is None and ticket.status in ACTIVE
+
+
+def can_assign(user, ticket):
+    """Give the ticket to anyone on the team (or to nobody): Team Leads and Admins."""
+    return is_lead(user) and can_view_ticket(user, ticket) and ticket.status not in FINISHED
+
+
+def can_drop(user, ticket):
+    """An Agent hands back a ticket they were given (it goes back to the queue)."""
+    return is_staff(user) and can_view_ticket(user, ticket) and _mine(user, ticket) and ticket.status in ACTIVE
+
+
+def can_triage(user, ticket):
+    """Change the priority and category. A Lead on any ticket; an Agent on
+    their own tickets and on unassigned ones (sorting the queue)."""
+    if not (is_staff(user) and can_view_ticket(user, ticket)) or ticket.status in FINISHED:
+        return False
+    return is_lead(user) or _mine(user, ticket) or ticket.assignee_id is None
+
+
+def can_move(user, ticket, to, now=None):
+    """May this person make this move? (Whether the ticket is ready for it is workflow.move_problem().)"""
+    if not can_view_ticket(user, ticket):
+        return False
+    if _owns(user, ticket):
+        return ((to == CANCELLED and ticket.status in (NEW, OPEN))
+                or (to == CLOSED and ticket.status == RESOLVED)
+                or (to == OPEN and reopen_window_open(ticket, now)))
+    if is_lead(user):
+        return True
+    # Agents work their own tickets. Closing and cancelling are for Team Leads
+    # (the customer closes their own ticket by saying it's fixed).
+    return is_staff(user) and _mine(user, ticket) and to in (OPEN, IN_PROGRESS, WAITING, RESOLVED)

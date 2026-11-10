@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, field, textarea %}
+{% block title %}New Ticket - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>New Ticket</h1>
+      <p class="lead">Tell us what went wrong. The more we know, the faster we can fix it.</p>
+    </div>
+  </div>
+  <div class="card new-ticket">
+    <form method="post" class="stack" data-new-ticket>
+      {{ csrf() }}
+      {{ field('subject', 'Subject', form.subject, errors.subject, hint="A few words, for example: Can't log in on my phone", attrs='required maxlength="120" autofocus autocomplete="off" data-subject') }}
+      <label class="field{% if errors.category %} has-error{% endif %}">
+        <span class="field-label">Category <span class="hint">Optional</span></span>
+        <select name="category">
+          <option value="">I'm not sure</option>
+          {% for category in categories %}
+            <option value="{{ category.id }}"{% if form.category == category.id|string %} selected{% endif %}>{{ category.name }}{% if category.description %}: {{ category.description }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        {% if errors.category %}<p class="field-error">{{ errors.category }}</p>{% endif %}
+      </label>
+      <fieldset class="choice-cards">
+        <legend>How much does it affect you?</legend>
+        {% for value, title, text in [('low', 'A little', 'It can wait.'), ('normal', 'Quite a lot', 'It slows me down.'), ('high', 'Very much', "I can't get my work done.")] %}
+          <label class="choice-card"><input type="radio" name="priority" value="{{ value }}"{% if form.priority == value %} checked{% endif %}>
+            <span><strong>{{ title }}</strong><small>{{ text }}</small></span></label>
+        {% endfor %}
+      </fieldset>
+      {% if errors.priority %}<p class="field-error">{{ errors.priority }}</p>{% endif %}
+      {{ textarea('description', 'What happened?', form.description, errors.description, hint='What did you do, what did you expect, and what happened instead?', rows=8, attrs='required maxlength="5000"') }}
+      <div class="form-actions">
+        <a class="button button-quiet" href="{{ url_for('tickets.mine') }}">Cancel</a>
+        <button class="button" type="submit">Send ticket</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

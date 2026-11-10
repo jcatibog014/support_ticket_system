@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_tickets.html" import ticket_card %}
+{% from "_icons.html" import icon %}
+{% block title %}Queue - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Queue</h1>
+      <p class="lead">Urgent first, then oldest first. Take a ticket to make it yours.</p>
+    </div>
+  </div>
+
+  <nav class="tabs" aria-label="Queue tabs">
+    {% for key in counts %}
+      <a href="{{ url_for('tickets.queue', tab=key, q=q or none, category=category or none, priority=priority or none) }}"{% if key == tab %} aria-current="page"{% endif %}>
+        {{ tab_titles[key] }} <span class="tab-count">{{ counts[key] }}</span></a>
+    {% endfor %}
+  </nav>
+
+  <form method="get" class="filters" role="search">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <label class="search-label">Search
+      <input type="search" name="q" value="{{ q }}" placeholder="TT-12, a subject or a customer"></label>
+    <label>Category
+      <select name="category">
+        <option value="">All categories</option>
+        {% for row in categories %}<option value="{{ row.id }}"{% if category == row.id|string %} selected{% endif %}>{{ row.name }}</option>{% endfor %}
+      </select></label>
+    <label>Priority
+      <select name="priority">
+        <option value="">All priorities</option>
+        {% for key, name in priority_names.items() %}<option value="{{ key }}"{% if priority == key %} selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select></label>
+    <div class="form-actions">
+      {% if q or category or priority %}<a class="button button-quiet" href="{{ url_for('tickets.queue', tab=tab) }}">Clear</a>{% endif %}
+      <button class="button button-quiet" type="submit">{{ icon('filter', 16) }} Filter</button>
+    </div>
+  </form>
+
+  {% if rows %}
+    <ul class="ticket-list">{% for ticket in rows %}{{ ticket_card(ticket) }}{% endfor %}</ul>
+    {% if pages > 1 %}
+      <nav class="pager" aria-label="Pages">
+        {% if page > 1 %}<a class="button button-small button-quiet" href="{{ url_for('tickets.queue', tab=tab, q=q or none, category=category or none, priority=priority or none, page=page - 1) }}">Newer</a>{% endif %}
+        <span>Page {{ page }} of {{ pages }}</span>
+        {% if page < pages %}<a class="button button-small button-quiet" href="{{ url_for('tickets.queue', tab=tab, q=q or none, category=category or none, priority=priority or none, page=page + 1) }}">Older</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state">
+      {{ icon('empty', 48) }}
+      <h2>{% if q or category or priority %}No Matching Tickets{% elif tab == 'unassigned' %}Nothing Waiting{% else %}No Tickets Here{% endif %}</h2>
+      <p>{% if q or category or priority %}Try fewer filters.{% elif tab == 'unassigned' %}Every ticket has someone on it. Nice work.{% else %}Tickets show up here when they get to this point.{% endif %}</p>
+    </div>
+  {% endif %}
+{% endblock %}

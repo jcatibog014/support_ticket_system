@@ -576,3 +576,103 @@ a.stat:hover { border-color: var(--accent); }
 .welcome-flash { width: 100%; max-width: 26rem; }
 .join-role { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
 .section-gap { margin-top: 0.75rem; }
+
+/* ---------- Ticket stubs (lists) ---------- */
+
+.ticket-list { display: grid; gap: 0.625rem; }
+.ticket-stub {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr);
+  background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--s);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.ticket-stub:hover { border-color: var(--border-strong); border-left-color: var(--s); background: var(--row-hover); }
+.stub-main { padding: 0.75rem 1rem; min-width: 0; display: grid; gap: 0.1875rem; }
+.stub-top { display: flex; gap: 0.625rem; align-items: center; font-size: 0.8125rem; }
+.stub-category { color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.stub-title { font-weight: 600; font-size: 1rem; color: var(--text) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The title's link covers the whole card. */
+.stub-title::after { content: ""; position: absolute; inset: 0; }
+.stub-sub { font-size: 0.8125rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stub-side {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 0.625rem;
+  padding: 0.5rem 1rem; border-top: 2px dashed var(--border);
+}
+.stub-meta { display: flex; align-items: center; gap: 0.625rem; }
+@media (min-width: 40rem) {
+  .ticket-stub { grid-template-columns: minmax(0, 1fr) 12.5rem; }
+  .stub-side {
+    flex-direction: column; align-items: flex-start; justify-content: center; gap: 0.4375rem;
+    border-top: 0; border-left: 2px dashed var(--border); padding: 0.75rem 1rem;
+  }
+  /* The two notches where the stub tears off: page-coloured circles sitting on the card's
+     top and bottom edges. Only the half inside the card has an outline, so it reads as a bite. */
+  .stub-side::before, .stub-side::after {
+    content: ""; position: absolute; left: -10px; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--bg); border: 1px solid transparent; transform: rotate(45deg);
+  }
+  .stub-side::before { top: -10px; border-right-color: var(--border); border-bottom-color: var(--border); }
+  .stub-side::after { bottom: -10px; border-left-color: var(--border); border-top-color: var(--border); }
+}
+
+.empty-tickets { display: grid; justify-items: center; gap: 0.25rem; }
+
+/* ---------- The queue ---------- */
+
+.filters {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; margin-bottom: 1rem;
+}
+.filters label { display: grid; gap: 0.25rem; font-size: 0.75rem; font-weight: 600; color: var(--muted); flex: 1 1 10rem; max-width: 16rem; }
+.filters .search-label { flex: 2 1 16rem; max-width: 26rem; }
+.filters input, .filters select { font-size: 0.9375rem; font-weight: 400; color: var(--text); }
+.filters .form-actions { flex: none; }
+.pager { display: flex; gap: 0.5rem; align-items: center; justify-content: center; margin-top: 1rem; font-size: 0.875rem; }
+
+/* ---------- One ticket ---------- */
+
+.ticket-layout { display: grid; gap: 1.25rem; }
+@media (min-width: 64rem) { .ticket-layout { grid-template-columns: minmax(0, 1fr) 20rem; align-items: start; } }
+.ticket-main { display: grid; gap: 1.25rem; min-width: 0; }
+.ticket-head { display: grid; gap: 0.375rem; }
+.ticket-head .title-row { display: flex; gap: 0.875rem; align-items: center; flex-wrap: wrap; }
+.ticket-title { font-size: 1.625rem; overflow-wrap: anywhere; }
+.ticket-head .lead { color: var(--muted); font-size: 0.875rem; }
+
+.conversation { display: grid; gap: 0.875rem; }
+.message {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.75rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem;
+}
+.message-staff { border-left: 3px solid var(--accent); }
+.message-internal { background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 35%, var(--border)); border-left: 3px solid var(--warning); }
+.message-head { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; font-size: 0.875rem; }
+.message-head strong { font-weight: 600; }
+.message-head time { color: var(--muted); font-size: 0.8125rem; }
+.message-body { margin-top: 0.25rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.resolution-card { border-left: 3px solid var(--resolved); }
+.resolution-card h2 { font-size: 1rem; display: flex; gap: 0.5rem; align-items: center; color: var(--resolved); }
+.resolution-card p { white-space: pre-wrap; margin-top: 0.375rem; }
+.reply-box textarea { min-height: 7rem; }
+.reply-note { color: var(--muted); font-size: 0.875rem; }
+
+.side-panel { display: grid; gap: 1rem; }
+.side-panel .card { padding: 1rem 1.125rem; }
+.side-panel h2 { font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.75rem; }
+.facts { display: grid; gap: 0.875rem; margin: 0; }
+.facts > div { display: grid; gap: 0.3125rem; }
+.facts dt { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.facts form { display: flex; gap: 0.375rem; }
+.facts select { min-height: 2.25rem; height: 2.25rem; padding: 0 0.5rem; }
+.facts .button { height: 2.25rem; }
+.fact-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.375rem; }
+.moves { display: grid; gap: 0.5rem; }
+.moves .button { width: 100%; justify-content: flex-start; }
+.move-help { font-size: 0.8125rem; color: var(--muted); }
+.resolve-form { display: grid; gap: 0.5rem; }
+.resolve-form summary { list-style: none; }
+.resolve-form summary::-webkit-details-marker { display: none; }
+.resolve-form[open] summary { margin-bottom: 0.5rem; }
+
+/* ---------- New ticket ---------- */
+
+.new-ticket { max-width: 48rem; }

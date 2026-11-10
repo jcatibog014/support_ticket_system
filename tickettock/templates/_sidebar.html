@@ -16,7 +16,13 @@
   <div class="sidebar-menu" id="side-nav">
     <nav aria-label="Main">
       <ul class="side-links">
-        {{ link('main.home', 'Home', 'home') }}
+        {% if g.user.is_staff %}
+          {{ link('main.home', 'Home', 'home') }}
+          {{ link('tickets.queue', 'Queue', 'queue', active=page == 'tickets.queue' or (page == 'tickets.show'), count=unassigned_count()) }}
+        {% else %}
+          {{ link('tickets.mine', 'My Tickets', 'ticket', active=page in ('tickets.mine', 'tickets.show')) }}
+          {{ link('tickets.new', 'New Ticket', 'plus') }}
+        {% endif %}
       </ul>
       {% if can.is_admin(g.user) %}
         <p class="side-label">Admin</p>

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, avatar %}
+{% from "_tickets.html" import stamp, priority as priority_tag %}
+{% from "_icons.html" import icon %}
+{% set staff_view = g.user.is_staff %}
+{% set version %}<input type="hidden" name="version" value="{{ ticket.version }}">{% endset %}
+{% block title %}{{ ticket.key }} {{ ticket.subject }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  <a class="back-link" href="{{ url_for('tickets.queue') if staff_view else url_for('tickets.mine') }}">{{ icon('back', 16) }} {{ 'Queue' if staff_view else 'My Tickets' }}</a>
+  <div class="ticket-layout">
+    <div class="ticket-main">
+      <header class="ticket-head">
+        <p class="ticket-key">{{ ticket.key }}</p>
+        <div class="title-row">
+          <h1 class="ticket-title">{{ ticket.subject }}</h1>
+          {{ stamp(ticket.status, ticket.status_name, big=True) }}
+        </div>
+        <p class="lead">Sent by {{ ticket.customer.name }} on {{ ticket.created_at|nice_datetime }}{% if ticket.category %} &middot; {{ ticket.category.name }}{% endif %}</p>
+      </header>
+
+      {% if ticket.status == 'resolved' or (ticket.status == 'closed' and ticket.resolution) %}
+        <section class="card resolution-card">
+          <h2>{{ icon('check') }} How It Was Solved</h2>
+          <p>{{ ticket.resolution }}</p>
+          {% if ticket.status == 'resolved' and not staff_view %}
+            <p class="reply-note section-gap">{% if reopen_open %}Still not working? Reply below or reopen it until {{ reopen_until|nice_date }}.{% else %}This ticket can't be reopened any more. Please send a new ticket.{% endif %}</p>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      <section class="conversation" id="conversation" aria-label="Conversation">
+        <article class="message">
+          {{ avatar(ticket.customer) }}
+          <div>
+            <p class="message-head"><strong>{{ ticket.customer.name }}</strong> <time datetime="{{ ticket.created_at.isoformat() }}Z">{{ ticket.created_at|nice_datetime }}</time></p>
+            <p class="message-body">{{ ticket.description }}</p>
+          </div>
+        </article>
+        {% for message in messages %}
+          {% set by_staff = message.author and message.author.is_staff %}
+          <article class="message{% if message.is_internal %} message-internal{% elif by_staff %} message-staff{% endif %}" id="m{{ message.id }}">
+            {{ avatar(message.author) }}
+            <div>
+              <p class="message-head">
+                <strong>{{ message.author.name if message.author else 'Someone who left' }}</strong>
+                {% if message.is_internal %}<span class="badge badge-internal">Internal note</span>
+                {% elif by_staff %}<span class="badge">Support team</span>{% endif %}
+                <time datetime="{{ message.created_at.isoformat() }}Z">{{ message.created_at|nice_datetime }}</time>
+              </p>
+              <p class="message-body">{{ message.body }}</p>
+            </div>
+          </article>
+        {% endfor %}
+      </section>
+
+      {% if can_reply %}
+        <section class="card reply-box" id="reply">
+          <form method="post" action="{{ url_for('tickets.reply', number=ticket.number) }}" class="stack">
+            {{ csrf() }}
+            <label class="field">
+              <span class="field-label">{{ 'Reply to ' ~ ticket.customer.first_name if staff_view else 'Your reply' }}</span>
+              <textarea name="body" rows="5" maxlength="5000" required></textarea>
+            </label>
+            <div class="form-actions">
+              {% if not staff_view and ticket.status == 'resolved' %}<p class="reply-note spacer">Replying reopens the ticket.</p>{% endif %}
+              {% if can_wait %}<button class="button button-quiet" type="submit" name="then" value="waiting">Send and wait for customer</button>{% endif %}
+              <button class="button" type="submit">{{ icon('reply', 16) }} Send reply</button>
+            </div>
+          </form>
+        </section>
+      {% elif ticket.is_finished %}
+        <p class="reply-note">This ticket is {{ ticket.status_name|lower }}, so it can't have new replies.{% if not staff_view %} Need more help? <a href="{{ url_for('tickets.new') }}">Send a new ticket</a>.{% endif %}</p>
+      {% endif %}
+    </div>
+
+    <aside class="side-panel">
+      <section class="card">
+        <h2>Details</h2>
+        <dl class="facts">
+          <div><dt>Status</dt><dd>{{ stamp(ticket.status, ticket.status_name) }}</dd></div>
+          <div><dt>Priority</dt><dd>
+            {% if can.can_triage(g.user, ticket) %}
+              <form method="post" action="{{ url_for('tickets.priority', number=ticket.number) }}">
+                {{ csrf() }}{{ version }}
+                <label class="visually-hidden" for="priority">Priority</label>
+                <select name="priority" id="priority" data-auto-submit>
+                  {% for key in priorities %}<option value="{{ key }}"{% if key == ticket.priority %} selected{% endif %}>{{ priority_names[key] }}</option>{% endfor %}
+                </select>
+                <button class="button button-small button-quiet" type="submit" data-auto-submit-button>Save</button>
+              </form>
+            {% else %}{{ priority_tag(ticket.priority, ticket.priority_name) }}{% endif %}
+          </dd></div>
+          <div><dt>Category</dt><dd>
+            {% if can.can_triage(g.user, ticket) %}
+              <form method="post" action="{{ url_for('tickets.category', number=ticket.number) }}">
+                {{ csrf() }}{{ version }}
+                <label class="visually-hidden" for="category">Category</label>
+                <select name="category_id" id="category" data-auto-submit>
+                  <option value="">None</option>
+                  {% for row in categories %}<option value="{{ row.id }}"{% if row.id == ticket.category_id %} selected{% endif %}>{{ row.name }}</option>{% endfor %}
+                </select>
+                <button class="button button-small button-quiet" type="submit" data-auto-submit-button>Save</button>
+              </form>
+            {% else %}{{ ticket.category.name if ticket.category else 'None' }}{% endif %}
+          </dd></div>
+          <div><dt>Assigned To</dt><dd>
+            {% if staff %}
+              <form method="post" action="{{ url_for('tickets.assign', number=ticket.number) }}">
+                {{ csrf() }}{{ version }}
+                <label class="visually-hidden" for="assignee">Assigned to</label>
+                <select name="assignee_id" id="assignee" data-auto-submit>
+                  <option value="">Nobody yet</option>
+                  {% for person in staff %}<option value="{{ person.id }}"{% if person.id == ticket.assignee_id %} selected{% endif %}>{{ person.name }}{% if person.id == g.user.id %} (you){% endif %}</option>{% endfor %}
+                </select>
+                <button class="button button-small button-quiet" type="submit" data-auto-submit-button>Save</button>
+              </form>
+            {% elif ticket.assignee %}
+              <span class="person">{{ avatar(ticket.assignee, 'small') }} <span class="person-text">{{ ticket.assignee.name }}{% if ticket.assignee_id == g.user.id %} (you){% endif %}</span></span>
+            {% else %}<span class="muted">{{ 'Nobody yet' if staff_view else 'Waiting for the next free person' }}</span>{% endif %}
+            {% if can.can_take(g.user, ticket) or can.can_drop(g.user, ticket) %}
+              <div class="fact-actions">
+                {% if can.can_take(g.user, ticket) %}
+                  <form method="post" action="{{ url_for('tickets.take', number=ticket.number) }}">{{ csrf() }}{{ version }}
+                    <button class="button button-small" type="submit">Take it</button></form>
+                {% endif %}
+                {% if can.can_drop(g.user, ticket) %}
+                  <form method="post" action="{{ url_for('tickets.drop', number=ticket.number) }}">{{ csrf() }}{{ version }}
+                    <button class="button button-small button-quiet" type="submit">Hand back</button></form>
+                {% endif %}
+              </div>
+            {% endif %}
+          </dd></div>
+          {% if staff_view %}
+            <div><dt>Customer</dt><dd><span class="person">{{ avatar(ticket.customer, 'small') }} <span class="person-text">{{ ticket.customer.name }}</span></span>
+              <span class="muted small">{{ ticket.customer.email }}</span></dd></div>
+          {% endif %}
+          <div><dt>Last Update</dt><dd>{{ ticket.updated_at|ago }}</dd></div>
+        </dl>
+      </section>
+
+      {% if moves or can_resolve %}
+        <section class="card">
+          <h2>{{ 'Move Ticket' if staff_view else 'Your Ticket' }}</h2>
+          <div class="moves">
+            {% if can_resolve %}
+              <details class="resolve-form"{% if request.args.get('resolve') %} open{% endif %}>
+                <summary class="button button-positive">{{ icon('check', 16) }} Resolve</summary>
+                <form method="post" action="{{ url_for('tickets.move', number=ticket.number) }}" class="stack-tight">
+                  {{ csrf() }}{{ version }}
+                  <input type="hidden" name="to" value="resolved">
+                  <label class="field"><span class="field-label">How was it solved?</span>
+                    <textarea name="resolution" rows="4" maxlength="2000" required></textarea></label>
+                  <button class="button button-positive" type="submit">Mark as resolved</button>
+                </form>
+              </details>
+            {% endif %}
+            {% for to, label in moves %}
+              <form method="post" action="{{ url_for('tickets.move', number=ticket.number) }}"
+                    {% if to == 'cancelled' %}data-confirm="Cancel {{ ticket.key }}? It can't be opened again."{% endif %}>
+                {{ csrf() }}{{ version }}
+                <input type="hidden" name="to" value="{{ to }}">
+                <button class="button {{ 'button-danger' if to == 'cancelled' else 'button-quiet' }}" type="submit">{{ label }}</button>
+              </form>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+    </aside>
+  </div>
+{% endblock %}
