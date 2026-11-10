@@ -181,3 +181,23 @@ def test_create_admin_command(tmp_path):
         from sqlalchemy import select
         user = db.session().scalar(select(User).where(User.email == "sam@example.com"))
         assert user.role == "admin" and not user.desk.is_demo
+
+
+# ---------- The Settings page (after a design review) ----------
+
+def test_settings_has_a_switch_for_emails_and_no_view_as(app):
+    client = browser(app, make_user(app, email="maria@example.com"))
+    text = client.get("/settings").get_data(as_text=True)
+    assert "Email Notifications" in text and 'class="switch"' in text
+    assert "View As" not in text  # it lives at the bottom of the menu, for the demo only
+    post(client, "/settings", {"action": "emails"})  # the switch turned off
+    assert get_user(app, "maria@example.com").email_updates is False
+
+
+def test_a_wrong_current_password_keeps_the_form_open(app):
+    client = browser(app, make_user(app, email="maria@example.com"))
+    response = post(client, "/settings", {"action": "password", "current_password": "wrong one",
+                                          "new_password": "brand new pw", "confirm_password": "brand new pw"})
+    text = response.get_data(as_text=True)
+    assert response.status_code == 400
+    assert '<details class="setting-fold" open>' in text and "That isn&#39;t your current password." in text

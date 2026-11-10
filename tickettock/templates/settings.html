@@ -1,14 +1,17 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf, field %}
+{% from "_icons.html" import icon %}
 {% block title %}Settings - {{ APP_NAME }}{% endblock %}
 {% block content %}
   <div class="page-head"><h1>Settings</h1></div>
+  {# The demo sees these as examples, switched off. The server refuses its changes anyway. #}
+  {% set locked = 'disabled' if g.user.is_demo else '' %}
   <div class="settings">
     {# The theme lives in the browser, so this needs JavaScript. app.js shows it. #}
     <section class="setting" data-theme-settings hidden>
       <div class="setting-text">
         <h2>Appearance</h2>
-        <p>Device follows your phone or computer. This choice is saved on this device only.</p>
+        <p>Device follows your phone or computer. Saved in this browser.</p>
       </div>
       <fieldset class="theme-choice">
         <legend class="visually-hidden">Theme</legend>
@@ -18,32 +21,21 @@
       </fieldset>
     </section>
 
-    {% if g.user.is_demo %}
-      {% from "_view_as.html" import view_as_form with context %}
-      <section class="setting">
-        <div class="setting-text">
-          <h2>View As</h2>
-          <p>Be someone else at the demo's Kape Cloud: a customer, an agent, the team lead or the admin. Menus, buttons and pages change with the role.</p>
-        </div>
-        {{ view_as_form('view-as-settings', 'stack-tight') }}
-      </section>
-    {% endif %}
-
-    {# The demo sees these as examples, switched off. The server refuses its changes anyway. #}
-    {% set locked = 'disabled' if g.user.is_demo else '' %}
     <section class="setting">
       <div class="setting-text">
-        <h2>Email Updates</h2>
-        <p>Everything comes to your Inbox. We can also email it to {{ g.user.email }}.
-          {% if not mail_on %}Email isn't set up on this site yet, so for now it is Inbox only.{% endif %}</p>
+        <h2>Email Notifications</h2>
       </div>
-      <form method="post">
+      {# The switch saves itself (app.js); without JavaScript, Save preferences shows. #}
+      <form method="post" class="stack-tight">
         {{ csrf() }}
         <input type="hidden" name="action" value="emails">
-        <fieldset class="stack plain-fieldset" {{ locked }}>
-          <label class="check-line"><input type="checkbox" name="email_updates" value="1"{% if g.user.email_updates %} checked{% endif %}>
-            Email me when something happens to my tickets</label>
-          <div class="form-actions"><button class="button" type="submit">Save</button></div>
+        <fieldset class="plain-fieldset stack-tight" {{ locked }}>
+          <label class="switch-line">
+            <input type="checkbox" class="switch" name="email_updates" value="1"{% if g.user.email_updates %} checked{% endif %} data-auto-submit>
+            <span>Email me when something happens to my tickets</span>
+          </label>
+          <p class="hint small">{% if mail_on %}Sending to {{ g.user.email }}.{% else %}Email isn't set up on this site yet, so everything stays in your Inbox.{% endif %}</p>
+          <div class="form-actions"><button class="button" type="submit" data-auto-submit-button>Save preferences</button></div>
         </fieldset>
       </form>
     </section>
@@ -56,54 +48,66 @@
       <form method="post">
         {{ csrf() }}
         <input type="hidden" name="action" value="name">
-        <fieldset class="stack plain-fieldset" {{ locked }}>
-          {{ field('name', 'Name', g.user.name, errors.name, attrs='required maxlength="80"') }}
-          <div class="form-actions"><button class="button" type="submit">Save name</button></div>
+        <fieldset class="plain-fieldset" {{ locked }}>
+          <div class="inline-save{% if errors.name %} has-error{% endif %}">
+            <label class="visually-hidden" for="name">Your name</label>
+            <input type="text" id="name" name="name" value="{{ g.user.name }}" required maxlength="80" autocomplete="name"
+                   {% if errors.name %}aria-invalid="true" aria-describedby="name-error"{% endif %}>
+            <button class="button" type="submit">Save</button>
+          </div>
+          {% if errors.name %}<p class="field-error" id="name-error">{{ errors.name }}</p>{% endif %}
         </fieldset>
       </form>
     </section>
 
+    {# Password and recovery code: a button that opens its form in place (works without JavaScript). #}
     <section class="setting">
       <div class="setting-text">
         <h2>Your Password</h2>
-        <p>Changing your password logs you out on your other devices.</p>
+        <p>Changing it logs you out on your other devices.</p>
       </div>
-      <form method="post">
-        {{ csrf() }}
-        <input type="hidden" name="action" value="password">
-        <fieldset class="stack plain-fieldset" {{ locked }}>
-          {{ field('current_password', 'Current password', '', errors.password_current, type='password', attrs='autocomplete="current-password" required') }}
-          {{ field('new_password', 'New password', '', errors.new_password, type='password', hint='At least 8 characters', attrs='autocomplete="new-password" required') }}
-          {{ field('confirm_password', 'New password again', type='password', attrs='autocomplete="new-password" required') }}
-          <div class="form-actions"><button class="button" type="submit">Change password</button></div>
-        </fieldset>
-      </form>
+      <details class="setting-fold"{% if errors.password_current or errors.new_password %} open{% endif %}>
+        <summary class="button button-quiet">{{ icon('lock', 16) }} Change password</summary>
+        <form method="post">
+          {{ csrf() }}
+          <input type="hidden" name="action" value="password">
+          <fieldset class="stack plain-fieldset" {{ locked }}>
+            {{ field('current_password', 'Current password', '', errors.password_current, type='password', attrs='autocomplete="current-password" required') }}
+            {{ field('new_password', 'New password', '', errors.new_password, type='password', hint='At least 8 characters', attrs='autocomplete="new-password" required') }}
+            {{ field('confirm_password', 'New password again', type='password', attrs='autocomplete="new-password" required') }}
+            <div class="form-actions"><button class="button" type="submit">Save new password</button></div>
+          </fieldset>
+        </form>
+      </details>
     </section>
 
     <section class="setting">
       <div class="setting-text">
         <h2>Recovery Code</h2>
-        <p>Lost your code? Make a new one. The old code stops working.</p>
+        <p>Lost your code? Make a new one. The old one stops working.</p>
       </div>
-      <form method="post">
-        {{ csrf() }}
-        <input type="hidden" name="action" value="recovery">
-        <fieldset class="stack plain-fieldset" {{ locked }}>
-          {{ field('current_password', 'Current password', '', errors.recovery_current, type='password', attrs='autocomplete="current-password" required') }}
-          <div class="form-actions"><button class="button button-quiet" type="submit">Make a new code</button></div>
-        </fieldset>
-      </form>
+      <details class="setting-fold"{% if errors.recovery_current %} open{% endif %}>
+        <summary class="button button-quiet">Make a new code</summary>
+        <form method="post">
+          {{ csrf() }}
+          <input type="hidden" name="action" value="recovery">
+          <fieldset class="stack plain-fieldset" {{ locked }}>
+            {{ field('current_password', 'Current password', '', errors.recovery_current, type='password', attrs='autocomplete="current-password" required') }}
+            <div class="form-actions"><button class="button" type="submit">Make the code</button></div>
+          </fieldset>
+        </form>
+      </details>
     </section>
 
     <section class="setting">
       <div class="setting-text">
         <h2>Install the App</h2>
-        <p>Put Ticket Tock on your phone's home screen or your computer's app list. It opens in its own window.</p>
+        <p>Put Ticket Tock on your home screen. It opens in its own window.</p>
       </div>
       <div class="setting-links">
         <button class="button button-quiet" type="button" data-install hidden>Install Ticket Tock</button>
-        <p class="muted small">On an iPhone: open this site in Safari, press Share, then Add to Home Screen.
-          On Android and computers: use the button above, or your browser's menu.</p>
+        <p class="muted small">iPhone: in Safari, press Share, then Add to Home Screen.
+          Android and computers: open the browser's menu and choose Install.</p>
       </div>
     </section>
 
@@ -111,9 +115,9 @@
       <div class="setting-text">
         <h2>Your Account</h2>
         {% if g.user.is_demo %}
-          <p>You are using the demo, so the name, password and code above can't be changed.</p>
+          <p>This is the demo, so your name, password and code can't be changed.</p>
         {% else %}
-          <p>You are logged in as {{ g.user.email }} ({{ g.user.role_name }}).</p>
+          <p>Logged in as {{ g.user.email }} ({{ g.user.role_name }}).</p>
         {% endif %}
       </div>
       <div class="form-actions">

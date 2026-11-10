@@ -254,6 +254,11 @@ def _stories(s, desk, people, categories, now):
     steps = []
     for index, (customer, subject, words, category, priority, (days_ago, hour), story_steps) in enumerate(STORIES):
         sent = _at(now, days_ago, hour)
+        if days_ago == 0:
+            # Today's stories must have happened already, whatever the time of day the demo starts:
+            # early in the morning they are moved back so their last step is half an hour ago.
+            last_step = max((later for later, *_ in story_steps), default=0)
+            sent = min(sent, now - timedelta(hours=last_step + 0.5, minutes=7 * (len(STORIES) - index)))
         steps.append((sent, index, "create", (customer, subject, words, category, priority)))
         for later, what, *args in story_steps:
             steps.append((sent + timedelta(hours=later), index, what, tuple(args)))

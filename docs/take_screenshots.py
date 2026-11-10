@@ -77,8 +77,12 @@ def ticket_urls(page):
 
 
 def view_as(page, role):
-    page.goto(f"{BASE}/settings")
-    page.select_option("#view-as-settings", role)
+    """The View As switch at the bottom of the menu (sent by script: on a phone the menu is folded away)."""
+    page.evaluate("""role => {
+        const choice = document.querySelector("#view-as-side");
+        choice.value = role;
+        choice.form.submit();
+    }""", role)
     page.wait_for_load_state("networkidle")
 
 

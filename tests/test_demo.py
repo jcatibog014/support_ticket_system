@@ -180,3 +180,20 @@ def test_purge_demos_command(app):
         s.commit()
     result = app.test_cli_runner().invoke(args=["purge-demos"])
     assert "Deleted 1 old demo desks." in result.output
+
+
+@pytest.mark.parametrize("hour", [1, 7, 12, 18, 23])
+def test_the_demo_is_complete_at_any_time_of_day(app, hour):
+    """Today's sample tickets count back from now, so a demo started at 1 AM has them too."""
+    from datetime import datetime, time
+
+    from tickettock import seed
+    from tickettock.dates import from_local, today
+    moment = from_local(datetime.combine(today(), time(hour, 5)))
+    with app.app_context():
+        s = db.session()
+        desk, _ = seed.build(s, moment)
+        s.commit()
+        subjects = set(s.scalars(select(Ticket.subject).where(Ticket.desk_id == desk.id)))
+        assert len(subjects) == len(seed.STORIES)
+        assert all(created <= moment for created in s.scalars(select(Ticket.created_at).where(Ticket.desk_id == desk.id)))
