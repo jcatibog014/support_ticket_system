@@ -71,3 +71,11 @@ def my_vote(s, article, user):
         return None
     return s.scalar(select(ArticleVote.helpful).where(ArticleVote.article_id == article.id,
                                                       ArticleVote.user_id == user.id))
+
+
+def more_like(s, user, desk, article, limit=5):
+    """Other published articles for the side of an article: (articles, all from its category?).
+    The same category first; when it has no others, any other articles."""
+    others = [other for other in visible(s, user, desk) if other.id != article.id and other.is_published]
+    same = [other for other in others if article.category_id and other.category_id == article.category_id]
+    return (same[:limit], True) if same else (others[:limit], False)

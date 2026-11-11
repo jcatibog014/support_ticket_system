@@ -836,11 +836,15 @@ a.stat:hover { border-color: var(--accent); }
 /* ---------- Pages without the menu (Help Articles for visitors, errors) ---------- */
 
 .app:not(:has(> .sidebar)) { display: block; }
-.public-layout .page { margin: 0 auto; max-width: 64rem; }
+/* Visitors' pages: a top bar across the whole window, then the page as wide as everywhere else. */
+.public-layout .page { margin: 0 auto; }
 .public-top {
-  display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: -0.25rem 0 1.5rem;
-  padding: 0.625rem 1rem; background: var(--sidebar); border-radius: var(--radius);
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: 0.75rem 1rem; background: var(--sidebar);
 }
+@media (min-width: 56rem) { .public-top { padding: 0.875rem 2.25rem; } }
+.public-link { color: var(--sidebar-text) !important; font-weight: 600; font-size: 0.875rem; margin-right: 0.5rem; }
+.search-box.search-wide { max-width: none; }
 .welcome-help { font-size: 0.875rem; color: var(--muted); }
 
 /* ---------- Pictures ---------- */
@@ -1118,3 +1122,13 @@ input[type="time"] { width: 9.5rem; max-width: 100%; }
 .more-filters summary::-webkit-details-marker { display: none; }
 .filters-more-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
 .page-head > div:first-child { flex: 1 1 24rem; min-width: 0; }  /* the title shares its row with the main button */
+
+/* An article: the text at a reading width, with a side column (Still stuck?, more articles). */
+.article-layout { display: grid; gap: 1.25rem; }
+@media (min-width: 64rem) { .article-layout { grid-template-columns: minmax(0, 1fr) 20rem; align-items: start; } }
+.article-layout .help-article { max-width: none; }
+.article-layout .prose { max-width: 48rem; }
+.stuck-card { display: grid; gap: 0.625rem; border-top: 3px solid var(--accent-bright); }
+.stuck-card h2, .side-panel .card h2 { margin-bottom: 0; }
+.more-articles { display: grid; gap: 0.5rem; font-size: 0.9375rem; }
+.more-articles a { font-weight: 600; }

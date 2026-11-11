@@ -48,8 +48,9 @@ def show(article_id):
                   .execution_options(synchronize_session=False))
         s.commit()
     helpful, not_helpful = articles.votes(s, article)
+    more, same_category = articles.more_like(s, g.user, _desk(), article)
     return render_template("help/article.html", article=article, helpful=helpful, not_helpful=not_helpful,
-                           my_vote=articles.my_vote(s, article, g.user))
+                           my_vote=articles.my_vote(s, article, g.user), more=more, same_category=same_category)
 
 
 @bp.post("/<int:article_id>/vote")

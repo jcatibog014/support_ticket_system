@@ -117,9 +117,13 @@ A ticket moves through these steps:
 |---|---|---|
 | ![My Tickets](docs/screenshots/my-tickets.png) | ![New ticket](docs/screenshots/new-ticket.png) | ![Customer ticket](docs/screenshots/customer-ticket.png) |
 
-| Rating | Help Articles | Search |
+| Rating | Help Articles (visitors) | Search |
 |---|---|---|
 | ![Rating](docs/screenshots/rating.png) | ![Help](docs/screenshots/help.png) | ![Help search](docs/screenshots/help-search.png) |
+
+| A Help Article |
+|---|
+| ![Help article](docs/screenshots/help-article.png) |
 
 ### Insights
 

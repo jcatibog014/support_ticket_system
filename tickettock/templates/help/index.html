@@ -2,8 +2,8 @@
 {% from "_icons.html" import icon %}
 {% block title %}Help Articles - {{ APP_NAME }}{% endblock %}
 {% block body_class %}{% if not g.user %}public-layout{% endif %}{% endblock %}
+{% block public_top %}{% if not g.user %}{% include "_public_top.html" %}{% endif %}{% endblock %}
 {% block content %}
-  {% if not g.user %}{% include "_public_top.html" %}{% endif %}
   <div class="page-head">
     <div>
       <h1>Help Articles</h1>
@@ -16,7 +16,7 @@
     {% endif %}
   </div>
 
-  <form method="get" class="search-box" role="search">
+  <form method="get" class="search-box search-wide" role="search">
     {{ icon('search') }}
     <label class="visually-hidden" for="help-q">Search Help Articles</label>
     <input type="search" id="help-q" name="q" value="{{ q }}" placeholder="Search, for example: password">

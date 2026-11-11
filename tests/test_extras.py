@@ -6,7 +6,7 @@ from PIL import Image
 from sqlalchemy import select
 
 from tickettock import db
-from tickettock.models import Article, Attachment, Notification, Ticket
+from tickettock.models import Article, Attachment, Category, Notification, Ticket
 
 from .conftest import browser, get_ticket, make_team, make_ticket, post
 
@@ -199,3 +199,21 @@ def test_stars_must_be_one_to_five(app, team):
     number = make_ticket(app, team["customer"], status="closed")
     post(browser(app, team["customer"]), f"/tickets/{number}/rate", {"stars": "9"})
     assert get_ticket(app, number).rating is None
+
+
+def test_visitors_get_a_full_width_top_bar(app, team):
+    text = page(app.test_client(), "/help")
+    # The bar sits outside the page column (in the layout, before <main>), so it spans the window.
+    assert text.index('class="public-top"') < text.index('<main')
+
+
+def test_an_article_shows_more_from_its_category_and_a_way_to_ask(app, team):
+    with app.app_context():
+        billing = db.session().scalar(select(Category.id).where(Category.name == "Billing"))
+    lead = browser(app, team["lead"])
+    for title in ("Why was I charged twice?", "Getting a refund"):
+        post(lead, "/help/new", {"title": title, "body": "Words.", "category_id": str(billing), "publish": "1"})
+    with app.app_context():
+        first = db.session().scalar(select(Article.id).where(Article.title == "Why was I charged twice?"))
+    text = page(browser(app, team["customer"]), f"/help/{first}")
+    assert "More in Billing" in text and "Getting a refund" in text and "Still Stuck?" in text
