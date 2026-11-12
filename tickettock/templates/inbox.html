@@ -6,7 +6,6 @@
   <div class="page-head">
     <div>
       <h1>Inbox</h1>
-      <p class="lead">What happened to {{ 'your tickets' if g.user.is_staff else 'the tickets you sent' }}.</p>
     </div>
     {% if notices and unread_count() %}
       <form method="post" action="{{ url_for('inbox.mark_all') }}" class="head-actions">

@@ -351,3 +351,17 @@ def test_the_queue_has_one_filter_dropdown_beside_the_search(app, team):
     assert "filter-count" not in menu and "Clear" not in menu
     on = page(client, "/queue?priority=high")
     assert '<span class="filter-count">1<span class="visually-hidden"> on</span></span>' in on and ">Clear</a>" in on
+
+
+def test_page_titles_have_no_line_under_them(app, team):
+    """The owner's choice: a page's title stands alone (a ticket keeps its "Sent by" details)."""
+    pages = {"admin": ["/", "/queue", "/inbox", "/help", "/help/new", "/saved-replies", "/insights", "/audit",
+                       "/admin/staff", "/admin/categories", "/admin/hours"],
+             "customer": ["/tickets", "/tickets/new", "/inbox", "/help"]}
+    for role, urls in pages.items():
+        client = browser(app, team[role])
+        for url in urls:
+            response = client.get(url)
+            text = response.get_data(as_text=True)
+            assert response.status_code == 200 and "<h1" in text, url
+            assert not re.search(r'</h1>\s*(</div>\s*)?<p class="lead">', text), url

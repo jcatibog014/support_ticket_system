@@ -6,7 +6,6 @@
   <div class="page-head">
     <div>
       <h1>{{ 'Edit Article' if article.id else 'New Article' }}</h1>
-      <p class="lead">Write in Markdown: **bold**, # a heading, - a list, [a link](https://example.com).</p>
     </div>
   </div>
   {% if preview %}
@@ -29,7 +28,7 @@
           {% for category in categories %}<option value="{{ category.id }}"{% if category.id == article.category_id %} selected{% endif %}>{{ category.name }}</option>{% endfor %}
         </select>
       </label>
-      {{ textarea('body', 'Article', article.body, errors.body, rows=14, attrs='required maxlength="20000"') }}
+      {{ textarea('body', 'Article', article.body, errors.body, hint='Markdown: **bold**, # heading, - list, [link](https://...)', rows=14, attrs='required maxlength="20000"') }}
       <label class="check-line"><input type="checkbox" name="publish" value="1"{% if article.is_published %} checked{% endif %}>
         Published: customers can read it (leave it off for a draft)</label>
       <div class="form-actions">

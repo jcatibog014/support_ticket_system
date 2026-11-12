@@ -6,7 +6,6 @@
   <div class="page-head">
     <div>
       <h1>Audit Log</h1>
-      <p class="lead">Every change on the desk, newest first. Lines are never changed or deleted.</p>
       {% if chain_ok %}
         <p class="chain-line" title="Each line holds a code made from the line before it. If anyone edited or removed a line, the codes would stop matching.">
           {{ icon('shield', 16) }} History intact: {{ plural(checked, 'line') }} checked</p>
