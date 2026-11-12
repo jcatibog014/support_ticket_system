@@ -10,21 +10,6 @@
     </div>
   </div>
 
-  {% if views %}
-    <nav class="view-chips" aria-label="Your saved views">
-      <span class="muted small">Your views</span>
-      {% for view in views %}
-        <span class="view-chip{% if view.query == this_query %} is-here{% endif %}">
-          <a href="{{ url_for('tickets.queue', **view_args(view)) }}">{{ view.name }}</a>
-          <form method="post" action="{{ url_for('tools.delete_view', view_id=view.id) }}">
-            {{ csrf() }}
-            <button type="submit" title="Delete {{ view.name }}">{{ icon('x', 12) }}<span class="visually-hidden">Delete {{ view.name }}</span></button>
-          </form>
-        </span>
-      {% endfor %}
-    </nav>
-  {% endif %}
-
   <nav class="tabs" aria-label="Queue tabs">
     {% for key in counts %}
       <a href="{{ url_for('tickets.queue', tab=key, q=q or none, category=category or none, priority=priority or none) }}"{% if key == tab %} aria-current="page"{% endif %}>
@@ -79,6 +64,22 @@
     </form>
   </details>
   </div>
+
+  {# Saved views sit under the search row; there's no row at all until one is saved. #}
+  {% if views %}
+    <nav class="view-chips" aria-label="Your saved views">
+      <span class="muted small">Your views</span>
+      {% for view in views %}
+        <span class="view-chip{% if view.query == this_query %} is-here{% endif %}">
+          <a href="{{ url_for('tickets.queue', **view_args(view)) }}">{{ view.name }}</a>
+          <form method="post" action="{{ url_for('tools.delete_view', view_id=view.id) }}">
+            {{ csrf() }}
+            <button type="submit" title="Delete {{ view.name }}">{{ icon('x', 12) }}<span class="visually-hidden">Delete {{ view.name }}</span></button>
+          </form>
+        </span>
+      {% endfor %}
+    </nav>
+  {% endif %}
 
   {% if staff and rows %}
     <form method="post" action="{{ url_for('tools.bulk') }}" id="bulk" class="bulk-bar">
