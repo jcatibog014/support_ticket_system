@@ -380,3 +380,11 @@ def test_every_page_uses_the_same_pills_and_search_row(app, team):
     assert '<nav class="tabs" aria-label="Period">' in insights and "segmented" not in insights
     css = (Path(__file__).parent.parent / "tickettock" / "static" / "style.css").read_text(encoding="utf-8")
     assert ".segmented" not in css and ".more-filters" not in css
+
+
+def test_a_title_and_its_button_share_one_row():
+    """Home's Go to queue (and every page's title button) stays at the right end of the title's row on a phone."""
+    css = (Path(__file__).parent.parent / "tickettock" / "static" / "style.css").read_text(encoding="utf-8")
+    assert re.search(r"^\.page-head \{ flex-wrap: nowrap; \}", css, re.M)
+    assert re.search(r"^\.page-head > \.head-actions \{[^}]*margin-left: auto", css, re.M)
+    assert "flex: 1 1 24rem" not in css  # the old minimum that pushed the button under the title

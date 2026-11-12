@@ -7,10 +7,6 @@
   <div class="page-head">
     <div>
       <h1>Audit Log</h1>
-      {% if chain_ok %}
-        <p class="chain-line" title="Each line holds a code made from the line before it. If anyone edited or removed a line, the codes would stop matching.">
-          {{ icon('shield', 16) }} History intact: {{ plural(checked, 'line') }} checked</p>
-      {% endif %}
     </div>
     {% if can.can_export_audit_log(g.user) %}
       <div class="head-actions">
@@ -18,6 +14,11 @@
       </div>
     {% endif %}
   </div>
+  {# Under the title row, so the Download button lines up with the title itself. #}
+  {% if chain_ok %}
+    <p class="chain-line" title="Each line holds a code made from the line before it. If anyone edited or removed a line, the codes would stop matching.">
+      {{ icon('shield', 16) }} History intact: {{ plural(checked, 'line') }} checked</p>
+  {% endif %}
 
   {% if not chain_ok %}
     <p class="chain chain-broken" role="alert">{{ icon('alert') }} <span><strong>The history was changed outside Ticket Tock.</strong>
