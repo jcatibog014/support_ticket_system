@@ -7,7 +7,6 @@
   <div class="page-head">
     <div>
       <h1>Help Articles</h1>
-      <p class="lead">Answers to the questions we hear most.</p>
     </div>
     {% if can.can_manage_articles(g.user) %}
       <div class="head-actions"><a class="button" href="{{ url_for('help.new') }}">{{ icon('plus') }} New article</a></div>
