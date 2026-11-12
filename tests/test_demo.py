@@ -106,7 +106,20 @@ def test_the_demo_cannot_change_accounts_or_send_email(app):
     assert mailer.outbox(app) == []
 
 
-def test_sign_up_from_the_demo_bar_leaves_the_demo(app):
+def test_the_demo_note_is_a_toast_once_then_a_small_tag(app):
+    client = start_demo(app)
+    first = client.get("/").get_data(as_text=True)
+    assert 'class="toast toast-demo"' in first and 'data-toast-wait="15000"' in first
+    assert "deleted after 24 hours" in first and 'href="/signup"' in first
+    later = client.get("/queue").get_data(as_text=True)
+    assert "toast-demo" not in later and "demo-bar" not in later  # no line taking space on every page
+    assert '<span class="demo-tag">Demo</span>' in later and 'class="demo-signup"' in later
+    team = make_team(app)
+    real = browser(app, team["agent"]).get("/queue").get_data(as_text=True)
+    assert "demo-tag" not in real and "demo-signup" not in real
+
+
+def test_sign_up_from_the_demo_menu_leaves_the_demo(app):
     client = start_demo(app)
     assert "Sign Up" in client.get("/signup").get_data(as_text=True)
     assert not is_logged_in(client)

@@ -16,7 +16,7 @@ I made this app to practise **authorization** (who may do what), **state transit
 Press **Try demo** on the login page. You get your own sample help desk, "Kape Cloud",
 a made-up coffee subscription app. Nobody else sees your demo, and it is deleted after 24 hours.
 
-You start as **Ben Torres, a Team Lead**. Use **View As** (at the bottom of the menu, or in Settings)
+You start as **Ben Torres, a Team Lead**. Use **View As** (at the bottom of the menu)
 to be someone else:
 
 | View As | Person | What you see |
@@ -26,7 +26,12 @@ to be someone else:
 | Team Lead | Ben Torres | Everything an agent sees, plus Insights and the Audit Log |
 | Admin | Sam Rivera | Everything, plus Staff, Categories and Time Limits |
 
-![Log in](docs/screenshots/login.png)
+A short note says you are in the demo, then goes away by itself. After that, a small
+**Demo** tag by the logo and **Sign up for real** at the bottom of the menu stay.
+
+| Log in | The demo starts |
+|---|---|
+| ![Log in](docs/screenshots/login.png) | ![The demo's welcome note](docs/screenshots/demo-start.png) |
 
 ## What It Can Do
 

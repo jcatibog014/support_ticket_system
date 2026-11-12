@@ -4,7 +4,7 @@
 {% macro view_as_form(id, class='') %}
   <form method="post" action="{{ url_for('auth.view_as') }}" class="{{ class }}">
     {{ csrf() }}
-    <label for="{{ id }}">{{ icon('eye', 14) }} View as <span class="view-as-tag">Demo</span></label>
+    <label for="{{ id }}">{{ icon('eye', 14) }} View as</label>
     <div class="view-as-row">
       <select name="role" id="{{ id }}" data-auto-submit>
         {% for role, who in (('customer', 'Maria'), ('agent', 'Ana'), ('lead', 'Ben'), ('admin', 'Sam')) %}

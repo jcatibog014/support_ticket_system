@@ -31,6 +31,7 @@ PHONE = {"width": 390, "height": 844}
 # "{Subject}" is the address of the demo ticket with that subject; "#..." scrolls there.
 PAGES = [
     ("login.png", "/login", "light", DESKTOP, None),
+    ("demo-start.png", "/", "light", DESKTOP, "lead"),  # the welcome toast, right after Try demo
     ("home.png", "/", "light", DESKTOP, "lead"),
     ("queue.png", "/queue?tab=open", "light", DESKTOP, "lead"),
     ("queue-overdue.png", "/queue?tab=overdue", "light", DESKTOP, "agent"),
@@ -108,7 +109,8 @@ def main():
                 if address.startswith("{"):
                     subject, _, rest = address[1:].partition("}")
                     address = urls[subject] + rest
-            page.goto(BASE + address)
+            if name != "demo-start.png":  # a fresh page would lose the one-time toast
+                page.goto(BASE + address)
             if name == "help-article.png":
                 page.locator(".article-row a").first.click()
                 page.wait_for_load_state("networkidle")

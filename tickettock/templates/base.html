@@ -25,16 +25,7 @@
     {# Pages open to visitors (Help Articles) put a full-width top bar here instead of the menu. #}
     {% block public_top %}{% endblock %}
     <main id="main" class="page {% block page_class %}{% endblock %}">
-      {% block notes %}
-      {% if g.user and g.user.is_demo %}
-        {# A slim line; its close button hides it until the browser tab is closed (app.js). #}
-        <div class="demo-bar" data-demo-bar>
-          <p><strong>Demo</strong> Sample help desk, deleted after 24 hours.</p>
-          <a href="{{ url_for('auth.signup') }}">Sign up for real</a>
-          <button class="demo-close" type="button" data-demo-close hidden aria-label="Hide the demo note">&times;</button>
-        </div>
-      {% endif %}
-      {% endblock %}
+      {# The demo note is a toast when the demo starts (auth.demo) plus a small tag by the logo, not a bar on every page. #}
       {% block content %}{% endblock %}
     </main>
   </div>
