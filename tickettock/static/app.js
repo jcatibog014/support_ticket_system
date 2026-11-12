@@ -220,7 +220,8 @@ function setUpInstall() {
   window.addEventListener("appinstalled", () => (button.hidden = true));
 }
 
-// Messages fade away after a few seconds (errors stay); every message can be closed.
+// Messages fade away after a few seconds (errors stay; data-toast-wait sets a longer time);
+// the clock starts again while the mouse or keyboard is on a message. Every message can be closed.
 function setUpToasts() {
   const leave = (toast) => {
     toast.classList.add("is-leaving");
@@ -230,28 +231,19 @@ function setUpToasts() {
     const close = toast.querySelector("[data-toast-close]");
     close.hidden = false;
     close.addEventListener("click", () => leave(toast));
-    if (toast.hasAttribute("data-toast-fade")) setTimeout(() => leave(toast), 6000);
-  });
-}
-
-// The demo note: closed once, it stays hidden until the browser tab is closed.
-function setUpDemoBar() {
-  const bar = document.querySelector("[data-demo-bar]");
-  if (!bar) return;
-  const close = bar.querySelector("[data-demo-close]");
-  try {
-    if (sessionStorage.getItem("tickettock-demo-note") === "closed") bar.classList.add("is-closed");
-  } catch (error) {
-    // Storage can be blocked: the note just stays.
-  }
-  close.hidden = false;
-  close.addEventListener("click", () => {
-    bar.classList.add("is-closed");
-    try {
-      sessionStorage.setItem("tickettock-demo-note", "closed");
-    } catch (error) {
-      // Fine: it is hidden on this page anyway.
-    }
+    if (!toast.hasAttribute("data-toast-fade")) return;
+    const wait = Number(toast.dataset.toastWait) || 6000;
+    let timer = setTimeout(() => leave(toast), wait);
+    const hold = () => clearTimeout(timer);
+    const resume = () => {
+      if (toast.matches(":hover") || toast.contains(document.activeElement)) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => leave(toast), 4000);
+    };
+    toast.addEventListener("mouseenter", hold);
+    toast.addEventListener("focusin", hold);
+    toast.addEventListener("mouseleave", resume);
+    toast.addEventListener("focusout", () => setTimeout(resume));
   });
 }
 
@@ -269,7 +261,6 @@ function setUpWatchChanges() {
 
 document.addEventListener("DOMContentLoaded", () => {
   setUpToasts();
-  setUpDemoBar();
   setUpWatchChanges();
   setUpInstall();
   setUpSuggestions();

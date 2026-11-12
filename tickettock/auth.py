@@ -317,8 +317,9 @@ def demo():
     desk, people = seed.build(s, moment)
     s.commit()
     log_in(seed.view_as_user(s, desk, LEAD))
-    flash("Welcome to the demo! You are Ben Torres, a Team Lead at Kape Cloud. "
-          "Use View As to be a customer, an agent or the admin.")
+    # Shown once, as a toast (_toasts.html); the small Demo tag by the logo stays.
+    flash("You are Ben Torres, a Team Lead. Switch roles with View As. "
+          "This sample desk is deleted after 24 hours.", "demo")
     return redirect(url_for("main.home"))
 
 

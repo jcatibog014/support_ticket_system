@@ -8,7 +8,8 @@
 {% endmacro %}
 <aside class="sidebar">
   <div class="sidebar-top">
-    <a class="logo" href="{{ url_for('main.home') }}">{{ logo() }} {{ APP_NAME }}</a>
+    <a class="logo" href="{{ url_for('main.home') }}">{{ logo() }} {{ APP_NAME }}
+      {%- if g.user.is_demo %} <span class="demo-tag">Demo</span>{% endif %}</a>
     <button class="menu-button" type="button" data-menu-button aria-expanded="false" aria-controls="side-nav" hidden>
       <span aria-hidden="true">&#9776;</span> Menu
     </button>
@@ -42,6 +43,7 @@
       {% if g.user.is_demo %}
         {% from "_view_as.html" import view_as_form with context %}
         {{ view_as_form('view-as-side', 'view-as') }}
+        <a class="demo-signup" href="{{ url_for('auth.signup') }}">Sign up for real</a>
       {% endif %}
       {# <details> opens and closes without JavaScript. app.js also closes it on an outside click. #}
       <details class="user-menu" data-popover>

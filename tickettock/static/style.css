@@ -394,12 +394,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
   border-left: 3px solid var(--accent);
 }
 .flash-error { background: var(--danger-soft); border-left-color: var(--danger); }
-.demo-bar {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.375rem 0.75rem;
-  margin-bottom: 1rem; padding: 0.3125rem 0.3125rem 0.3125rem 0.875rem; border-radius: var(--radius);
-  background: var(--demo-bg); border: 1px solid var(--demo-border); font-size: 0.8125rem;
-}
-.demo-bar strong { color: var(--warning); margin-right: 0.375rem; }
 
 .empty-state {
   text-align: center; padding: 2.5rem 1.25rem; border: 1px dashed var(--border-strong);
@@ -1013,20 +1007,11 @@ input[type="checkbox"].switch:disabled { opacity: 0.55; cursor: not-allowed; }
 /* Counts in the menu: the button colour (readable white or dark text in both themes). */
 .side-links .count { background: var(--accent); color: var(--on-accent); }
 
-/* The demo note: one slim line. */
-.demo-bar {
-  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;
-  padding: 0.25rem 0.375rem 0.25rem 0.75rem; border-radius: 6px; font-size: 0.8125rem;
-  background: var(--demo-bg); border: 1px solid var(--demo-border);
-}
-.demo-bar p { flex: 1; min-width: 12rem; }
-.demo-bar a { font-weight: 600; }
-.demo-close, .toast-close {
+.toast-close {
   display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; padding: 0;
   border: 0; border-radius: 4px; background: none; color: var(--muted); font-size: 1.125rem; line-height: 1; cursor: pointer;
 }
-.demo-close:hover, .toast-close:hover { background: var(--surface-2); color: var(--text); }
-.js .demo-bar.is-closed { display: none; }
+.toast-close:hover { background: var(--surface-2); color: var(--text); }
 
 /* Messages: small notes at the bottom right. Green for good news, red for problems. */
 .toasts {
@@ -1055,7 +1040,6 @@ input[type="checkbox"].switch:disabled { opacity: 0.55; cursor: not-allowed; }
 /* View As looks like a testing tool: an eye and a "Demo" tag, with an amber edge. */
 .view-as { border: 1px dashed color-mix(in srgb, #fbbf24 55%, transparent); }
 .view-as label { display: flex; align-items: center; gap: 0.375rem; color: var(--sidebar-text); font-weight: 600; }
-.view-as-tag { margin-left: auto; padding: 0 0.375rem; border-radius: 4px; background: #fbbf24; color: #1f2937; font-size: 0.6875rem; font-weight: 700; }
 
 /* Queue: the filters and the bookmark (save view) on one row; bigger tick boxes. */
 .filter-bar { display: flex; align-items: flex-end; gap: 0.5rem; margin-bottom: 1rem; }
@@ -1132,3 +1116,16 @@ input[type="time"] { width: 9.5rem; max-width: 100%; }
 .stuck-card h2, .side-panel .card h2 { margin-bottom: 0; }
 .more-articles { display: grid; gap: 0.5rem; font-size: 0.9375rem; }
 .more-articles a { font-weight: 600; }
+
+/* ==================== Demo note as a toast ==================== */
+
+/* A small tag by the logo says "this is the demo" on every page, without taking a line. */
+.demo-tag {
+  align-self: center; padding: 0.0625rem 0.375rem; border-radius: 4px; background: #fbbf24; color: #1f2937;
+  font-family: var(--font-text); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.02em;
+}
+.demo-signup { font-size: 0.8125rem; font-weight: 600; padding: 0 0.5rem; }
+/* The welcome toast when the demo starts: amber edge, a little wider for its link. */
+.toast-demo { border-left-color: #fbbf24; }
+.toast-demo strong { color: var(--warning); margin-right: 0.25rem; }
+.toast-demo a { font-weight: 600; white-space: nowrap; }
