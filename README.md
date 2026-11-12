@@ -99,6 +99,7 @@ A ticket moves through these steps:
 ### Agent Tools
 
 - **Saved replies** with `{name}`, `{agent}` and `{ticket}` filled in.
+- **Search and Filter**: search by ticket number, subject or customer. One **Filter** menu holds the category and priority.
 - **Saved views**: save your queue filters with a name.
 - **Bulk changes** for Team Leads: tick tickets, then give them to someone, set the priority, or close them.
 - **Round-robin**: tickets in a category can go to the agents in turn.
@@ -109,6 +110,10 @@ A ticket moves through these steps:
 | Home | Saved replies | Inbox |
 |---|---|---|
 | ![Home](docs/screenshots/home.png) | ![Saved replies](docs/screenshots/saved-replies.png) | ![Inbox](docs/screenshots/inbox.png) |
+
+| Search and Filter |
+|---|
+| ![The Filter menu](docs/screenshots/queue-filter.png) |
 
 ### For Customers
 

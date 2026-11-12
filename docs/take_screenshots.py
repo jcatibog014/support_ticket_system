@@ -34,6 +34,7 @@ PAGES = [
     ("demo-start.png", "/", "light", DESKTOP, "lead"),  # the welcome toast, right after Try demo
     ("home.png", "/", "light", DESKTOP, "lead"),
     ("queue.png", "/queue?tab=open", "light", DESKTOP, "lead"),
+    ("queue-filter.png", "/queue?tab=open&priority=urgent", "light", DESKTOP, "lead"),
     ("queue-overdue.png", "/queue?tab=overdue", "light", DESKTOP, "agent"),
     ("ticket.png", "{Charged twice for November}", "light", DESKTOP, "agent"),
     ("ticket-dark.png", "{Charged twice for November}", "dark", DESKTOP, "agent"),
@@ -114,6 +115,8 @@ def main():
             if name == "help-article.png":
                 page.locator(".article-row a").first.click()
                 page.wait_for_load_state("networkidle")
+            if name == "queue-filter.png":
+                page.locator(".filter-menu summary").click()
             if name == "new-ticket.png":
                 page.locator("input[name=subject]").press_sequentially("I forgot my password", delay=30)
                 page.wait_for_timeout(1200)  # the Help Article suggestions

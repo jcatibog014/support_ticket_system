@@ -77,6 +77,14 @@ def test_saved_views_keep_only_queue_filters(app, team):
     assert "Urgent open" not in page(browser(app, team["other_agent"]), "/queue")  # each person's own
 
 
+def test_saved_views_sit_under_the_search_and_hide_when_there_are_none(app, team):
+    agent = browser(app, team["agent"])
+    assert "Your views" not in page(agent, "/queue")  # no empty row
+    post(agent, "/queue/views", {"name": "Urgent open", "tab": "open", "priority": "urgent"})
+    text = page(agent, "/queue")
+    assert text.index('name="q"') < text.index("Your views") < text.index("Urgent open")
+
+
 def test_nobody_deletes_someone_elses_view(app, team):
     post(browser(app, team["agent"]), "/queue/views", {"name": "Mine", "tab": "mine"})
     with app.app_context():

@@ -10,21 +10,6 @@
     </div>
   </div>
 
-  {% if views %}
-    <nav class="view-chips" aria-label="Your saved views">
-      <span class="muted small">Your views</span>
-      {% for view in views %}
-        <span class="view-chip{% if view.query == this_query %} is-here{% endif %}">
-          <a href="{{ url_for('tickets.queue', **view_args(view)) }}">{{ view.name }}</a>
-          <form method="post" action="{{ url_for('tools.delete_view', view_id=view.id) }}">
-            {{ csrf() }}
-            <button type="submit" title="Delete {{ view.name }}">{{ icon('x', 12) }}<span class="visually-hidden">Delete {{ view.name }}</span></button>
-          </form>
-        </span>
-      {% endfor %}
-    </nav>
-  {% endif %}
-
   <nav class="tabs" aria-label="Queue tabs">
     {% for key in counts %}
       <a href="{{ url_for('tickets.queue', tab=key, q=q or none, category=category or none, priority=priority or none) }}"{% if key == tab %} aria-current="page"{% endif %}>
@@ -33,24 +18,38 @@
   </nav>
 
   <div class="filter-bar">
-  <form method="get" class="filters" role="search">
+  {# One row: the search box, one Filter dropdown (Category and Priority inside), and the bookmark.
+     <details> opens without JavaScript; Enter in the search box searches (the first, unseen button). #}
+  {% set on = (1 if category else 0) + (1 if priority else 0) %}
+  <form method="get" class="filters queue-filters" role="search">
+    <button type="submit" class="visually-hidden" tabindex="-1">Search</button>
     <input type="hidden" name="tab" value="{{ tab }}">
-    <label class="search-label">Search
-      <input type="search" name="q" value="{{ q }}" placeholder="TT-12, a subject or a customer"></label>
-    <label>Category
-      <select name="category">
-        <option value="">All categories</option>
-        {% for row in categories %}<option value="{{ row.id }}"{% if category == row.id|string %} selected{% endif %}>{{ row.name }}</option>{% endfor %}
-      </select></label>
-    <label>Priority
-      <select name="priority">
-        <option value="">All priorities</option>
-        {% for key, name in priority_names.items() %}<option value="{{ key }}"{% if priority == key %} selected{% endif %}>{{ name }}</option>{% endfor %}
-      </select></label>
-    <div class="form-actions">
-      {% if q or category or priority %}<a class="button button-quiet" href="{{ url_for('tickets.queue', tab=tab) }}">Clear</a>{% endif %}
-      <button class="button button-quiet" type="submit">{{ icon('filter', 16) }} Filter</button>
+    <label class="visually-hidden" for="queue-search">Search</label>
+    <div class="search-field">
+      {{ icon('search', 16) }}
+      <input type="search" id="queue-search" name="q" value="{{ q }}" placeholder="Search tickets" title="A number like TT-12, words from the subject, or a customer's name">
     </div>
+    <details class="filter-menu" data-popover>
+      <summary class="button button-quiet{% if on %} is-on{% endif %}">{{ icon('filter', 16) }} Filter
+        {%- if on %} <span class="filter-count">{{ on }}<span class="visually-hidden"> on</span></span>{% endif %}
+        {{ icon('chevron-down', 14) }}</summary>
+      <div class="filter-panel">
+        <label class="field"><span class="field-label">Category</span>
+          <select name="category">
+            <option value="">All categories</option>
+            {% for row in categories %}<option value="{{ row.id }}"{% if category == row.id|string %} selected{% endif %}>{{ row.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="field-label">Priority</span>
+          <select name="priority">
+            <option value="">All priorities</option>
+            {% for key, name in priority_names.items() %}<option value="{{ key }}"{% if priority == key %} selected{% endif %}>{{ name }}</option>{% endfor %}
+          </select></label>
+        <div class="form-actions">
+          {% if on %}<a class="button button-quiet" href="{{ url_for('tickets.queue', tab=tab, q=q or none) }}">Clear</a>{% endif %}
+          <button class="button" type="submit">Apply</button>
+        </div>
+      </div>
+    </details>
   </form>
   {# Save these filters as a view: a bookmark button beside Filter that opens a small panel. #}
   <details class="save-view" data-popover>
@@ -65,6 +64,22 @@
     </form>
   </details>
   </div>
+
+  {# Saved views sit under the search row; there's no row at all until one is saved. #}
+  {% if views %}
+    <nav class="view-chips" aria-label="Your saved views">
+      <span class="muted small">Your views</span>
+      {% for view in views %}
+        <span class="view-chip{% if view.query == this_query %} is-here{% endif %}">
+          <a href="{{ url_for('tickets.queue', **view_args(view)) }}">{{ view.name }}</a>
+          <form method="post" action="{{ url_for('tools.delete_view', view_id=view.id) }}">
+            {{ csrf() }}
+            <button type="submit" title="Delete {{ view.name }}">{{ icon('x', 12) }}<span class="visually-hidden">Delete {{ view.name }}</span></button>
+          </form>
+        </span>
+      {% endfor %}
+    </nav>
+  {% endif %}
 
   {% if staff and rows %}
     <form method="post" action="{{ url_for('tools.bulk') }}" id="bulk" class="bulk-bar">
