@@ -1135,3 +1135,31 @@ input[type="time"] { width: 9.5rem; max-width: 100%; }
 @media (min-width: 56rem) {
   .sidebar-top .demo-tag { margin-left: 0.5rem; margin-right: auto; }
 }
+
+/* ==================== Queue: search + one Filter dropdown ==================== */
+
+/* One row: the search box takes the room, then Filter, then the bookmark. */
+.filter-bar { align-items: center; }
+.queue-filters { flex-wrap: nowrap; align-items: center; margin-bottom: 0; }
+.search-field { position: relative; flex: 1; min-width: 0; }
+.search-field svg { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.search-field input { width: 100%; padding-left: 2.25rem; }
+/* Filter opens a small panel with Category and Priority; a count shows how many are on. */
+.filter-menu { position: relative; flex: none; }
+.filter-menu summary { list-style: none; }
+.filter-menu summary::-webkit-details-marker { display: none; }
+.filter-menu summary > svg:last-child { transition: transform 0.15s; }
+.filter-menu[open] summary > svg:last-child { transform: rotate(180deg); }
+.filter-menu summary.is-on { border-color: var(--accent); }
+.filter-count {
+  min-width: 1.25rem; padding: 0 0.375rem; border-radius: 999px; text-align: center; line-height: 1.25rem;
+  background: var(--accent); color: var(--on-accent); font-size: 0.75rem; font-weight: 700;
+}
+.filter-panel {
+  position: absolute; right: 0; top: calc(100% + 0.375rem); z-index: 20; width: min(18rem, calc(100vw - 2rem));
+  display: grid; gap: 0.75rem; padding: 0.875rem; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lifted);
+}
+.filters .filter-panel label { max-width: none; color: var(--text); }
+.filter-panel select { width: 100%; }
+.filter-panel .form-actions { justify-content: flex-end; }

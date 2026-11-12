@@ -33,24 +33,38 @@
   </nav>
 
   <div class="filter-bar">
-  <form method="get" class="filters" role="search">
+  {# One row: the search box, one Filter dropdown (Category and Priority inside), and the bookmark.
+     <details> opens without JavaScript; Enter in the search box searches (the first, unseen button). #}
+  {% set on = (1 if category else 0) + (1 if priority else 0) %}
+  <form method="get" class="filters queue-filters" role="search">
+    <button type="submit" class="visually-hidden" tabindex="-1">Search</button>
     <input type="hidden" name="tab" value="{{ tab }}">
-    <label class="search-label">Search
-      <input type="search" name="q" value="{{ q }}" placeholder="TT-12, a subject or a customer"></label>
-    <label>Category
-      <select name="category">
-        <option value="">All categories</option>
-        {% for row in categories %}<option value="{{ row.id }}"{% if category == row.id|string %} selected{% endif %}>{{ row.name }}</option>{% endfor %}
-      </select></label>
-    <label>Priority
-      <select name="priority">
-        <option value="">All priorities</option>
-        {% for key, name in priority_names.items() %}<option value="{{ key }}"{% if priority == key %} selected{% endif %}>{{ name }}</option>{% endfor %}
-      </select></label>
-    <div class="form-actions">
-      {% if q or category or priority %}<a class="button button-quiet" href="{{ url_for('tickets.queue', tab=tab) }}">Clear</a>{% endif %}
-      <button class="button button-quiet" type="submit">{{ icon('filter', 16) }} Filter</button>
+    <label class="visually-hidden" for="queue-search">Search</label>
+    <div class="search-field">
+      {{ icon('search', 16) }}
+      <input type="search" id="queue-search" name="q" value="{{ q }}" placeholder="Search tickets" title="A number like TT-12, words from the subject, or a customer's name">
     </div>
+    <details class="filter-menu" data-popover>
+      <summary class="button button-quiet{% if on %} is-on{% endif %}">{{ icon('filter', 16) }} Filter
+        {%- if on %} <span class="filter-count">{{ on }}<span class="visually-hidden"> on</span></span>{% endif %}
+        {{ icon('chevron-down', 14) }}</summary>
+      <div class="filter-panel">
+        <label class="field"><span class="field-label">Category</span>
+          <select name="category">
+            <option value="">All categories</option>
+            {% for row in categories %}<option value="{{ row.id }}"{% if category == row.id|string %} selected{% endif %}>{{ row.name }}</option>{% endfor %}
+          </select></label>
+        <label class="field"><span class="field-label">Priority</span>
+          <select name="priority">
+            <option value="">All priorities</option>
+            {% for key, name in priority_names.items() %}<option value="{{ key }}"{% if priority == key %} selected{% endif %}>{{ name }}</option>{% endfor %}
+          </select></label>
+        <div class="form-actions">
+          {% if on %}<a class="button button-quiet" href="{{ url_for('tickets.queue', tab=tab, q=q or none) }}">Clear</a>{% endif %}
+          <button class="button" type="submit">Apply</button>
+        </div>
+      </div>
+    </details>
   </form>
   {# Save these filters as a view: a bookmark button beside Filter that opens a small panel. #}
   <details class="save-view" data-popover>

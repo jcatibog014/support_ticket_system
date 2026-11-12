@@ -340,3 +340,14 @@ def test_queue_tabs_are_pills_that_wrap_instead_of_scrolling():
     rule = re.search(r"^\.tabs \{([^}]*)\}", css, re.M).group(1)
     assert "flex-wrap: wrap" in rule and "overflow" not in rule  # every tab shows on a phone
     assert re.search(r"^\.tabs a \{[^}]*border-radius: 999px", css, re.M)
+
+
+def test_the_queue_has_one_filter_dropdown_beside_the_search(app, team):
+    client = browser(app, team["agent"])
+    text = page(client, "/queue")
+    menu = text[text.index('<details class="filter-menu"'):text.index("</details>", text.index('<details class="filter-menu"'))]
+    assert 'name="category"' in menu and 'name="priority"' in menu  # both filters live in the one dropdown
+    assert text.index('name="q"') < text.index('<details class="filter-menu"')  # search first, then Filter
+    assert "filter-count" not in menu and "Clear" not in menu
+    on = page(client, "/queue?priority=high")
+    assert '<span class="filter-count">1<span class="visually-hidden"> on</span></span>' in on and ">Clear</a>" in on
