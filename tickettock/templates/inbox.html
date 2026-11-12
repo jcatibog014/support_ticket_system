@@ -7,20 +7,23 @@
     <div>
       <h1>Inbox</h1>
     </div>
+  </div>
+
+  {# The pills on the left, Mark all as read at the right end of the same row. #}
+  <div class="tabs-row">
+    <nav class="tabs" aria-label="Inbox filter">
+      {% for key, title in filters.items() %}
+        <a href="{{ url_for('inbox.index', show=key) }}"{% if key == show %} aria-current="page"{% endif %}>{{ title }}
+          {% if key == 'unread' and unread_count() %}<span class="tab-count">{{ unread_count() }}</span>{% endif %}</a>
+      {% endfor %}
+    </nav>
     {% if notices and unread_count() %}
-      <form method="post" action="{{ url_for('inbox.mark_all') }}" class="head-actions">
+      <form method="post" action="{{ url_for('inbox.mark_all') }}">
         {{ csrf() }}
-        <button class="button button-quiet" type="submit">{{ icon('check', 16) }} Mark all as read</button>
+        <button class="button button-quiet tabs-row-button" type="submit">{{ icon('check', 16) }} Mark all as read</button>
       </form>
     {% endif %}
   </div>
-
-  <nav class="tabs" aria-label="Inbox filter">
-    {% for key, title in filters.items() %}
-      <a href="{{ url_for('inbox.index', show=key) }}"{% if key == show %} aria-current="page"{% endif %}>{{ title }}
-        {% if key == 'unread' and unread_count() %}<span class="tab-count">{{ unread_count() }}</span>{% endif %}</a>
-    {% endfor %}
-  </nav>
 
   {% if notices %}
     <ul class="inbox">
@@ -37,7 +40,16 @@
             </form>
             <p class="notice-line">{{ line }}</p>
           </div>
-          <time datetime="{{ notice.created_at.isoformat() }}Z" title="{{ notice.created_at|nice_datetime }}">{{ notice.created_at|ago }}</time>
+          <div class="notice-side">
+            <time datetime="{{ notice.created_at.isoformat() }}Z" title="{{ notice.created_at|nice_datetime }}">{{ notice.created_at|ago }}</time>
+            {# Read ones can be marked unread again (to come back to later), and unread ones read without opening. #}
+            <form method="post" action="{{ url_for('inbox.mark_one', notice_id=notice.id) }}">
+              {{ csrf() }}
+              <input type="hidden" name="read" value="{{ '0' if notice.read_at else '1' }}">
+              <input type="hidden" name="show" value="{{ show }}">
+              <button class="notice-toggle" type="submit">{{ 'Mark as unread' if notice.read_at else 'Mark as read' }}</button>
+            </form>
+          </div>
         </li>
       {% endfor %}
     </ul>

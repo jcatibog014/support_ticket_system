@@ -211,6 +211,27 @@ def test_mark_all_as_read(app, team):
     assert "All Caught Up" in page(customer, "/inbox?show=unread")
 
 
+def test_a_notice_can_be_marked_unread_again_and_read(app, team):
+    number = make_ticket(app, team["customer"], status="open", assignee_id=team["agent"])
+    post(browser(app, team["agent"]), f"/tickets/{number}/reply", {"body": "Hello!"})
+    with app.app_context():
+        notice_id = db.session().scalar(select(Notification.id))
+    customer = browser(app, team["customer"])
+    inbox = page(customer, "/inbox")
+    # Mark all as read sits in the pills row, after the pills; an unread notice offers Mark as read
+    row = inbox[inbox.index('<div class="tabs-row">'):inbox.index('<ul class="inbox">')]
+    assert row.index("</nav>") < row.index("Mark all as read")
+    assert "Mark as read</button>" in inbox
+    post(customer, "/inbox/read")
+    assert "Mark as unread</button>" in page(customer, "/inbox") and "Mark all as read" not in page(customer, "/inbox")
+    response = post(customer, f"/inbox/{notice_id}/read", {"read": "0", "show": "unread"})
+    assert response.location.endswith("/inbox?show=unread")  # stays on the same tab
+    assert "(unread)" in page(customer, "/inbox?show=unread")
+    post(customer, f"/inbox/{notice_id}/read", {"read": "1"})
+    assert "All Caught Up" in page(customer, "/inbox?show=unread")
+    assert post(browser(app, team["other_customer"]), f"/inbox/{notice_id}/read", {"read": "0"}).status_code == 404
+
+
 # ---------- Email (optional) ----------
 
 def test_no_email_without_mail_settings(app, team):

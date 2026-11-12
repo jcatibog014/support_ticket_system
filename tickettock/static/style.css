@@ -1160,3 +1160,17 @@ input[type="time"] { width: 9.5rem; max-width: 100%; }
 .filter-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .filter-panel input { width: 100%; min-width: 0; }
 .page-head + .chain-line { display: flex; margin: -0.875rem 0 1rem; }
+
+/* ==================== Inbox: Mark as unread, and Mark all as read beside the pills ==================== */
+
+.tabs-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem 0.75rem; margin: -0.25rem 0 1.25rem; }
+.tabs-row .tabs { margin: 0; }
+.tabs-row form { flex: none; }
+.tabs-row-button { height: 2.25rem; }  /* the pills' height, so the row lines up */
+.notice-side { display: grid; justify-items: end; gap: 0.25rem; }
+/* Above the notice's whole-row link, so it can be pressed on its own. */
+.notice-toggle {
+  position: relative; z-index: 1; padding: 0.125rem 0.375rem; margin-right: -0.375rem; border: 0; border-radius: 4px;
+  background: none; color: var(--muted); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.notice-toggle:hover { background: var(--surface-2); color: var(--text); }
