@@ -1,5 +1,6 @@
 """Ticket pages: sending, seeing, replying, assigning, and moving through the workflow."""
 import re
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
@@ -332,3 +333,10 @@ def test_queue_tabs_follow_the_workflow_and_open_on_all_open(app, team):
                                            "Resolved", "Closed")]
     assert order == sorted(order)
     assert re.search(r'aria-current="page">\s*All Open', text)  # the tab it opens on
+
+
+def test_queue_tabs_are_pills_that_wrap_instead_of_scrolling():
+    css = (Path(__file__).parent.parent / "tickettock" / "static" / "style.css").read_text(encoding="utf-8")
+    rule = re.search(r"^\.tabs \{([^}]*)\}", css, re.M).group(1)
+    assert "flex-wrap: wrap" in rule and "overflow" not in rule  # every tab shows on a phone
+    assert re.search(r"^\.tabs a \{[^}]*border-radius: 999px", css, re.M)
