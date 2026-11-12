@@ -39,12 +39,13 @@
     <div>
       <h1>Insights</h1>
     </div>
-    <nav class="segmented" aria-label="Period">
-      {% for value, name in periods.items() %}
-        <a href="{{ url_for('insights.index', days=value) }}"{% if value == days %} aria-current="page"{% endif %}>{{ name }}</a>
-      {% endfor %}
-    </nav>
   </div>
+
+  <nav class="tabs" aria-label="Period">
+    {% for value, name in periods.items() %}
+      <a href="{{ url_for('insights.index', days=value) }}"{% if value == days %} aria-current="page"{% endif %}>{{ name }}</a>
+    {% endfor %}
+  </nav>
 
   <div class="stat-tiles">
     <div class="stat"><span class="stat-value">{{ statuses|map(attribute=2)|sum }}</span><span class="stat-label">Open Now</span>
