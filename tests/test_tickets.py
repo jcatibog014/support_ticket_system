@@ -365,3 +365,18 @@ def test_page_titles_have_no_line_under_them(app, team):
             text = response.get_data(as_text=True)
             assert response.status_code == 200 and "<h1" in text, url
             assert not re.search(r'</h1>\s*(</div>\s*)?<p class="lead">', text), url
+
+
+def test_every_page_uses_the_same_pills_and_search_row(app, team):
+    """Like the Queue: pill tabs, and one Filter dropdown beside the search box (Audit Log)."""
+    lead = browser(app, team["lead"])
+    audit = page(lead, "/audit")
+    menu = audit[audit.index('<details class="filter-menu"'):audit.index("</details>", audit.index('<details class="filter-menu"'))]
+    for name in ("what", "who", "ticket", "since", "until"):
+        assert f'name="{name}"' in menu, name  # every filter lives in the one dropdown
+    assert audit.index('name="q"') < audit.index('<details class="filter-menu"') and "More filters" not in audit
+    assert '<span class="filter-count">2<span class="visually-hidden"> on</span></span>' in page(lead, "/audit?what=triage&who=Ben+Torres")
+    insights = page(lead, "/insights")
+    assert '<nav class="tabs" aria-label="Period">' in insights and "segmented" not in insights
+    css = (Path(__file__).parent.parent / "tickettock" / "static" / "style.css").read_text(encoding="utf-8")
+    assert ".segmented" not in css and ".more-filters" not in css

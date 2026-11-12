@@ -1,0 +1,27 @@
+{# The search row used by the Queue and the Audit Log: a search box, then one Filter dropdown that
+   holds the page's filters (the caller block), with a count of how many are on, Clear and Apply.
+   <details> opens without JavaScript; Enter in the search box searches (the first, unseen button). #}
+{% from "_icons.html" import icon %}
+{% macro search_row(id, q, placeholder, on, clear_url, title='', hidden={}) %}
+  <form method="get" class="filters search-row" role="search">
+    <button type="submit" class="visually-hidden" tabindex="-1">Search</button>
+    {% for name, value in hidden.items() %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+    <label class="visually-hidden" for="{{ id }}">Search</label>
+    <div class="search-field">
+      {{ icon('search', 16) }}
+      <input type="search" id="{{ id }}" name="q" value="{{ q }}" placeholder="{{ placeholder }}"{% if title %} title="{{ title }}"{% endif %}>
+    </div>
+    <details class="filter-menu" data-popover>
+      <summary class="button button-quiet{% if on %} is-on{% endif %}">{{ icon('filter', 16) }} Filter
+        {%- if on %} <span class="filter-count">{{ on }}<span class="visually-hidden"> on</span></span>{% endif %}
+        {{ icon('chevron-down', 14) }}</summary>
+      <div class="filter-panel">
+        {{ caller() }}
+        <div class="form-actions">
+          {% if on %}<a class="button button-quiet" href="{{ clear_url }}">Clear</a>{% endif %}
+          <button class="button" type="submit">Apply</button>
+        </div>
+      </div>
+    </details>
+  </form>
+{% endmacro %}

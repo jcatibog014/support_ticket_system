@@ -75,12 +75,16 @@ A ticket moves through these steps:
 - The code only **adds** lines. It never changes or deletes them (a test checks the code).
 - Each line has a **hash** that includes the line before it, like a chain. If someone edits a line in the
   database, the chain breaks, and the Audit Log shows it. `flask --app tickettock verify-audit` checks it too.
-- Team Leads see the **Audit Log** with filters. Admins can download it as a CSV file.
+- Team Leads see the **Audit Log**: search it, or narrow it with one **Filter** menu (what, who, ticket, dates). Admins can download it as a CSV file.
 - Customers see the history of their own tickets, without the team's internal lines.
 
 | Ticket history | Audit Log |
 |---|---|
 | ![Ticket history](docs/screenshots/ticket-history.png) | ![Audit Log](docs/screenshots/audit-log.png) |
+
+| Audit Log: Filter |
+|---|
+| ![The Audit Log's Filter menu](docs/screenshots/audit-filter.png) |
 
 ### Time Limits (SLA)
 

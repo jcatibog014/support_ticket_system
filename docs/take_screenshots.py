@@ -49,6 +49,7 @@ PAGES = [
     ("insights.png", "/insights?days=30", "light", DESKTOP, "lead"),
     ("insights-dark.png", "/insights?days=30", "dark", DESKTOP, "lead"),
     ("audit-log.png", "/audit", "light", DESKTOP, "lead"),
+    ("audit-filter.png", "/audit?what=triage", "light", DESKTOP, "lead"),
     ("help.png", "/help", "light", DESKTOP, None),
     ("help-search.png", "/help?q=password", "light", DESKTOP, "customer"),
     ("help-article.png", "/help?q=refund", "light", DESKTOP, "customer"),  # opens the first result
@@ -115,7 +116,7 @@ def main():
             if name == "help-article.png":
                 page.locator(".article-row a").first.click()
                 page.wait_for_load_state("networkidle")
-            if name == "queue-filter.png":
+            if name in ("queue-filter.png", "audit-filter.png"):
                 page.locator(".filter-menu summary").click()
             if name == "new-ticket.png":
                 page.locator("input[name=subject]").press_sequentially("I forgot my password", delay=30)

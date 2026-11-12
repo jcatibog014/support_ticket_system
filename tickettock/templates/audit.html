@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_history.html" import what %}
 {% from "_icons.html" import icon %}
+{% from "_search.html" import search_row %}
 {% block title %}Audit Log - {{ APP_NAME }}{% endblock %}
 {% block content %}
   <div class="page-head">
@@ -23,34 +24,29 @@
       {{ problem }} Lines from there on can't be trusted. Tell the Admin.</span></p>
   {% endif %}
 
-  {# One search box and the kind of change; the rest folds away under More filters. #}
-  {% set more = shown.who or shown.ticket or shown.since or shown.until %}
-  <form method="get" class="filters audit-filters" role="search">
-    <label class="search-label">Search
-      <input type="search" name="q" value="{{ shown.q }}" placeholder="A name, TT-12, or a word"></label>
-    <label>What
+  {# The same row as the Queue: a search box, then one Filter dropdown with every other filter. #}
+  {% set on = [shown.what, shown.who, shown.ticket, shown.since, shown.until]|select|list|length %}
+  <div class="filter-bar">
+  {% call search_row('audit-search', shown.q, 'Search the history', on, url_for('audit.log', q=shown.q or none),
+                     title='A name, a ticket number like TT-12, or a word') %}
+    <label class="field"><span class="field-label">What</span>
       <select name="what">
         <option value="">Everything</option>
         {% for key, (title, verbs) in groups.items() %}<option value="{{ key }}"{% if shown.what == key %} selected{% endif %}>{{ title }}</option>{% endfor %}
       </select></label>
-    <div class="form-actions">
-      {% if shown.values()|select|list %}<a class="button button-quiet" href="{{ url_for('audit.log') }}">Clear</a>{% endif %}
-      <button class="button button-quiet" type="submit">{{ icon('filter', 16) }} Filter</button>
+    <label class="field"><span class="field-label">Who</span>
+      <select name="who">
+        <option value="">Everyone</option>
+        {% for name in names %}<option{% if shown.who == name %} selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select></label>
+    <label class="field"><span class="field-label">Ticket</span>
+      <input type="text" name="ticket" value="{{ shown.ticket }}" placeholder="TT-12"></label>
+    <div class="filter-dates">
+      <label class="field"><span class="field-label">From</span> <input type="date" name="since" value="{{ shown.since }}"></label>
+      <label class="field"><span class="field-label">To</span> <input type="date" name="until" value="{{ shown.until }}"></label>
     </div>
-    <details class="more-filters"{% if more %} open{% endif %}>
-      <summary class="link-button">More filters</summary>
-      <div class="filters-more-row">
-        <label>Who
-          <select name="who">
-            <option value="">Everyone</option>
-            {% for name in names %}<option{% if shown.who == name %} selected{% endif %}>{{ name }}</option>{% endfor %}
-          </select></label>
-        <label>Ticket <input type="text" name="ticket" value="{{ shown.ticket }}" placeholder="TT-12"></label>
-        <label>From <input type="date" name="since" value="{{ shown.since }}"></label>
-        <label>To <input type="date" name="until" value="{{ shown.until }}"></label>
-      </div>
-    </details>
-  </form>
+  {% endcall %}
+  </div>
 
   {% if events %}
     <div class="table-wrap">
