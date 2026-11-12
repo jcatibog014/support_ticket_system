@@ -8,8 +8,9 @@
 {% endmacro %}
 <aside class="sidebar">
   <div class="sidebar-top">
-    <a class="logo" href="{{ url_for('main.home') }}">{{ logo() }} {{ APP_NAME }}
-      {%- if g.user.is_demo %} <span class="demo-tag">Demo</span>{% endif %}</a>
+    <a class="logo" href="{{ url_for('main.home') }}">{{ logo() }} {{ APP_NAME }}</a>
+    {# Beside the Menu button on a phone, beside the name on a wide screen (style.css). #}
+    {% if g.user.is_demo %}<span class="demo-tag">Demo</span>{% endif %}
     <button class="menu-button" type="button" data-menu-button aria-expanded="false" aria-controls="side-nav" hidden>
       <span aria-hidden="true">&#9776;</span> Menu
     </button>

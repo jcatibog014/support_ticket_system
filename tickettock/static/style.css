@@ -1129,3 +1129,8 @@ input[type="time"] { width: 9.5rem; max-width: 100%; }
 .toast-demo { border-left-color: #fbbf24; }
 .toast-demo strong { color: var(--warning); margin-right: 0.25rem; }
 .toast-demo a { font-weight: 600; white-space: nowrap; }
+/* Phone: the tag sits at the right, beside the Menu button. Wide screen (no Menu button): beside the name. */
+.sidebar-top .demo-tag { margin-left: auto; margin-right: 0.5rem; }
+@media (min-width: 56rem) {
+  .sidebar-top .demo-tag { margin-left: 0.5rem; margin-right: auto; }
+}
