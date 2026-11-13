@@ -143,7 +143,8 @@ A ticket moves through these steps:
 
 Team Leads see charts for the last 7, 30 or 90 days: tickets sent and solved, open tickets by status,
 each person's load, the median time to reply and to solve, the time limits met, and the ratings.
-Every chart can open as a table.
+Every chart can open as a table. The demo has 3 months of past tickets (the team getting faster over time),
+so the 7, 30 and 90 days each show different numbers.
 
 | Insights | Insights (dark) |
 |---|---|
