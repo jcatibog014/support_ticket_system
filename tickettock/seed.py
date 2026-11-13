@@ -1,7 +1,7 @@
 """The demo: a sample help desk for "Kape Cloud", a made-up coffee subscription app.
 
 Every Try Demo makes its own desk (deleted after 24 hours), with a team, customers,
-Help Articles, saved replies, and about 30 tickets in every state. The tickets are
+Help Articles, saved replies, about 30 tickets in every state and 3 months of closed ones. The tickets are
 not typed straight into the tables: each one's story (sent, taken, replied,
 waited, resolved, rated...) is played through the real functions, in time order.
 So the history chain, the SLA clocks, the Inbox and the escalations are exactly
@@ -19,7 +19,7 @@ from sqlalchemy import select
 from werkzeug.datastructures import FileStorage
 from werkzeug.security import generate_password_hash
 
-from . import audit, desks, hours, invites, photos, tick, tickets, tools, workflow
+from . import audit, closing, desks, hours, invites, photos, tick, tickets, tools, workflow
 from .dates import from_local, to_local
 from .models import (ADMIN, AGENT, CUSTOMER, LEAD, Article, ArticleVote, Category, SavedReply, SavedView, Ticket,
                      User)
@@ -165,6 +165,63 @@ STORIES = [
      "Billing", "high", (4, 15), [(1, "take", "carlo")]),
 ]
 
+# ----- The desk's past: closed tickets from 3 weeks to 3 months ago -----
+# So Insights' 7, 30 and 90 days each show something different. The team gets better over time:
+# three months ago replies were slow and ratings low, a month ago better, and lately quick.
+PAST = [
+    ("Box came a day late", "My box was supposed to come on Thursday but came on Friday.", "Orders and delivery", "normal",
+     "Courier delay, said sorry."),
+    ("How do I pause my plan?", "I'm away for a month. Can I pause instead of cancel?", "Question", "low",
+     "Showed Pause plan in My Plan."),
+    ("Charged the old price", "The price went down but I was charged the old one.", "Billing", "high",
+     "Refunded the difference."),
+    ("Can't reset my password", "The reset page says my code is wrong.", "Login and account", "normal",
+     "Checked who it was and made a new code."),
+    ("App logs me out", "The app logs me out every time I close it.", "Bug report", "normal",
+     "Fixed in the next app version."),
+    ("Wrong beans in my box", "I ordered the dark roast but got the light one.", "Orders and delivery", "normal",
+     "Sent the right beans."),
+    ("Need a receipt with my TIN", "My company needs my TIN on the receipt.", "Billing", "low",
+     "Sent a new receipt with the TIN."),
+    ("Is the coffee organic?", "Are your beans organic?", "Question", "low",
+     "Explained which roasts are organic."),
+    ("Double charge this month", "I see two payments for the same box.", "Billing", "urgent",
+     "One payment was a bank hold, explained."),
+    ("Address change didn't save", "I changed my address but the box went to the old one.", "Orders and delivery", "high",
+     "Fixed the address, new box sent."),
+    ("Rewards points missing", "My points from last month are gone.", "Question", "normal",
+     "Added the missing points back."),
+    ("Page won't load on Safari", "The website stays blank on my iPad.", "Bug report", "high",
+     "Safari bug, fixed on the website."),
+]
+PAST_CUSTOMERS = ("maria", "jose", "grace", "paolo", "nina", "tomas", "elena")
+PAST_AGENTS = ("ana", "carlo", "lia", "ana", "carlo", "ben")
+
+
+def _past_stories():
+    """About 36 closed tickets, one every 2 days from 21 to 88 days ago (oldest last), as STORIES-style tuples."""
+    stories = []
+    for number in range(36):
+        days_ago = 21 + round(number * 67 / 35)
+        subject, words, category, priority, resolution = PAST[number % len(PAST)]
+        customer = PAST_CUSTOMERS[number % len(PAST_CUSTOMERS)]
+        agent = PAST_AGENTS[number % len(PAST_AGENTS)]
+        # Hours to the first reply and to resolved, and the stars, by how long ago it was.
+        if days_ago > 60:
+            reply_after, solve_after, stars = 30, 150, (2, 3, 3, 4)[number % 4]
+        elif days_ago > 30:
+            reply_after, solve_after, stars = 6, 30, (3, 4, 4, 5)[number % 4]
+        else:
+            reply_after, solve_after, stars = 1.5, 8, (4, 5, 5, 5)[number % 4]
+        steps = [(reply_after - 0.2, "take", agent),
+                 (reply_after, "reply", agent, "Hi! Thanks for telling us. Let me sort this out for you."),
+                 (solve_after, "resolve", agent, resolution)]
+        if number % 3:  # most customers rate; the timer closes them all a week after resolved
+            steps.append((solve_after + 20, "rate", customer, stars, ""))
+        stories.append((customer, subject, words, category, priority, (days_ago, 9 + number % 7), steps))
+    return stories
+
+
 PICTURES = {
     "box": ((244, 236, 222), (120, 84, 54), "Beans: GROUND"),
     "export": ((250, 250, 250), (200, 64, 27), "Export"),
@@ -207,7 +264,7 @@ def build(s, now):
         s.add(user)
         # A random start: a deleted demo's old cookie (user id + version) can never fit a new demo's user.
         user.session_version = secrets.randbelow(10 ** 9) + 2
-        user.created_at = now - timedelta(days=40)
+        user.created_at = now - timedelta(days=100)  # before the oldest past ticket (PAST)
         people[key] = user
     s.flush()
     categories = {c.name: c for c in s.scalars(select(Category).where(Category.desk_id == desk.id))}
@@ -228,31 +285,32 @@ def _content(s, desk, people, categories, now):
     s.add(Article(desk_id=desk.id, title=title, body=body, category_id=categories[category].id, is_published=False,
                   created_by_id=ben.id, updated_at=now - timedelta(days=1)))
     for title, body in SAVED_REPLIES:
-        s.add(SavedReply(desk_id=desk.id, title=title, body=body, created_by_id=ben.id, created_at=now - timedelta(days=30)))
+        s.add(SavedReply(desk_id=desk.id, title=title, body=body, created_by_id=ben.id, created_at=now - timedelta(days=90)))
     s.flush()
     first = s.scalar(select(Article).where(Article.desk_id == desk.id).order_by(Article.id))
     for key, helpful in (("maria", True), ("jose", True), ("grace", False)):
         s.add(ArticleVote(article_id=first.id, user_id=people[key].id, helpful=helpful))
     s.add(SavedView(user_id=ben.id, name="Urgent and open", query="tab=open&priority=urgent"))
     s.add(SavedView(user_id=people["ana"].id, name="Billing", query=f"tab=open&category={categories['Billing'].id}"))
-    # The desk's own history, before the tickets: the team joining, Ben made Team Lead, the settings.
+    # The desk's own history, before the tickets (the oldest is 88 days ago): the team joining, Ben made
+    # Team Lead, the settings.
     sam = people["sam"]
     for number, key in enumerate(("ben", "ana", "carlo", "lia")):
         person = people[key]
-        audit.log(s, desk.id, person, audit.JOINED, now - timedelta(days=40, hours=-number), field="role",
+        audit.log(s, desk.id, person, audit.JOINED, now - timedelta(days=100, hours=-number), field="role",
                   new=AGENT, note=person.email)
-    audit.log(s, desk.id, sam, audit.ROLE_CHANGED, now - timedelta(days=35), field="role", old=AGENT, new=LEAD,
+    audit.log(s, desk.id, sam, audit.ROLE_CHANGED, now - timedelta(days=95), field="role", old=AGENT, new=LEAD,
               note=f"{ben.name} ({ben.email})")
-    audit.log(s, desk.id, sam, audit.CATEGORY_ADDED, now - timedelta(days=34), new="Orders and delivery")
-    audit.log(s, desk.id, sam, audit.CATEGORY_CHANGED, now - timedelta(days=34), field="auto_assign", old="no",
+    audit.log(s, desk.id, sam, audit.CATEGORY_ADDED, now - timedelta(days=94), new="Orders and delivery")
+    audit.log(s, desk.id, sam, audit.CATEGORY_CHANGED, now - timedelta(days=94), field="auto_assign", old="no",
               new="yes", note="Orders and delivery")
-    audit.log(s, desk.id, ben, audit.REPLY_SAVED, now - timedelta(days=30), new=SAVED_REPLIES[0][0])
+    audit.log(s, desk.id, ben, audit.REPLY_SAVED, now - timedelta(days=90), new=SAVED_REPLIES[0][0])
 
 
 def _stories(s, desk, people, categories, now):
     """Play every story's steps through the real functions, all stories together in time order."""
     steps = []
-    for index, (customer, subject, words, category, priority, (days_ago, hour), story_steps) in enumerate(STORIES):
+    for index, (customer, subject, words, category, priority, (days_ago, hour), story_steps) in enumerate(STORIES + _past_stories()):
         sent = _at(now, days_ago, hour)
         if days_ago == 0:
             # Today's stories must have happened already, whatever the time of day the demo starts:
@@ -262,6 +320,9 @@ def _stories(s, desk, people, categories, now):
         steps.append((sent, index, "create", (customer, subject, words, category, priority)))
         for later, what, *args in story_steps:
             steps.append((sent + timedelta(hours=later), index, what, tuple(args)))
+            if what == "resolve":
+                # The timer closes it 7 days later (if nobody reopened it), at that moment, not when the demo starts.
+                steps.append((sent + timedelta(hours=later) + closing.REOPEN_WINDOW + timedelta(minutes=5), index, "autoclose", ()))
     made = {}
     last_message = {}
     for moment, index, what, args in sorted(steps, key=lambda step: (step[0], step[1])):
@@ -291,6 +352,9 @@ def _stories(s, desk, people, categories, now):
             workflow.move(s, ticket, "resolved", people[args[0]], moment, resolution=args[1])
         elif what == "close":
             workflow.move(s, ticket, "closed", people[args[0]], moment)
+        elif what == "autoclose":
+            if ticket.status == "resolved" and ticket.resolved_at <= moment - closing.REOPEN_WINDOW:
+                workflow.move(s, ticket, "closed", None, moment, note=closing.NOTE)
         elif what == "cancel":
             workflow.move(s, ticket, "cancelled", people[args[0]], moment)
         elif what == "rate":

@@ -208,5 +208,35 @@ def test_the_demo_is_complete_at_any_time_of_day(app, hour):
         desk, _ = seed.build(s, moment)
         s.commit()
         subjects = set(s.scalars(select(Ticket.subject).where(Ticket.desk_id == desk.id)))
-        assert len(subjects) == len(seed.STORIES)
+        assert subjects == {story[1] for story in seed.STORIES + seed._past_stories()}  # every story, the past ones too
         assert all(created <= moment for created in s.scalars(select(Ticket.created_at).where(Ticket.desk_id == desk.id)))
+
+
+def test_insights_tell_a_different_story_for_7_30_and_90_days(app):
+    """The demo has 3 months of closed tickets, so the periods don't all count the same tickets."""
+    import re
+    client = start_demo(app)
+    tiles = {}
+    for days in (7, 30, 90):
+        html = client.get(f"/insights?days={days}").get_data(as_text=True)
+        block = html[html.index('<div class="stat-tiles">'):html.index('<div class="stat-tiles">') + 4000]
+        tiles[days] = [re.sub(r"\s+", " ", re.sub("<[^>]+>", " ", tile)).strip()
+                       for tile in re.findall(r'<div class="stat[^"]*">(.*?)</div>', block, re.S)]
+    sent = {days: int(re.search(r"(\d+) Sent", " ".join(found)).group(1)) for days, found in tiles.items()}
+    assert sent[7] < sent[30] < sent[90]
+    for name in ("First Reply in Time", "Solved in Time", "Customer Rating"):
+        shown = {days: next(tile for tile in found if name in tile) for days, found in tiles.items()}
+        assert len(set(shown.values())) == 3, shown  # a different number for each period
+
+
+def test_old_resolved_tickets_closed_7_days_after_not_when_the_demo_starts(app):
+    from tickettock import closing, seed
+    from tickettock.models import AuditEvent
+    moment = utcnow()
+    with app.app_context():
+        s = db.session()
+        desk, _ = seed.build(s, moment)
+        s.commit()
+        closes = s.scalars(select(AuditEvent).where(AuditEvent.desk_id == desk.id, AuditEvent.note == closing.NOTE)).all()
+        assert len(closes) > 30  # the past tickets were closed by the timer...
+        assert all(event.created_at < moment - timedelta(hours=1) for event in closes)  # ...each at its own time
