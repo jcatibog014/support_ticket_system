@@ -36,6 +36,20 @@ def open_notice(notice_id):
     return redirect(url_for("tickets.show", number=notice.ticket.number))
 
 
+@bp.post("/inbox/<int:notice_id>/read")
+@login_required
+def mark_one(notice_id):
+    """Mark one notice read or unread again (read=0), and stay on the same Inbox tab."""
+    s = db.session()
+    notice = s.get(Notification, notice_id)
+    if notice is None or notice.user_id != g.user.id:
+        abort(404)
+    notice.read_at = utcnow() if request.form.get("read") == "1" else None
+    s.commit()
+    show = request.form.get("show", "all")
+    return redirect(url_for("inbox.index", show=show if show in notify.FILTERS and show != "all" else None))
+
+
 @bp.post("/inbox/read")
 @login_required
 def mark_all():
